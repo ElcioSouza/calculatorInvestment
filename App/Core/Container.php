@@ -11,7 +11,6 @@ class Container
         private array $singletons = []
     ) {}
 
-    // 1. Método estático para pegar o CONTAINER em si
     public static function getContainer(): self
     {
         if (self::$instance === null) {
@@ -20,7 +19,6 @@ class Container
         return self::$instance;
     }
 
-    // 2. Método de instância para buscar DEPENDÊNCIAS (não é static!)
     public function getInstancia(string $key): mixed
     {
         if (!isset($this->bindings[$key])) {
@@ -37,7 +35,6 @@ class Container
         return $this->bindings[$key]($this);
     }
 
-    // 3. Método para registrar as dependências
     public function bind(string $key, callable $resolver, bool $singleton = false): void
     {
        $this->bindings[$key] = $resolver;

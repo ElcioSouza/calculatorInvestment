@@ -8,7 +8,6 @@ try {
     if (method_exists($controller, 'execute')) {
         $controller->execute($argv);
     }
-    exit(0);
 } catch (\Exception $exception) {
     fwrite(STDERR, $exception->getMessage() . PHP_EOL);
     exit(1);
