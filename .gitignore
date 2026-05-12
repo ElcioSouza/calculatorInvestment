@@ -1,0 +1,55 @@
+# Composer
+/vendor/
+composer.phar
+*.phar
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Composer artifacts
+/.phpunit.result.cache
+
+# PHPUnit / coverage
+coverage/
+phpunit.xml
+phpunit.xml.dist
+.phpunit.result.cache
+.phpunit.cache
+
+# Logs / cache / build
+logs/
+cache/
+storage/
+var/
+build/
+*.log
+*.cache
+
+# IDEs / editors
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Node / frontend
+node_modules/
+npm-debug.log
+yarn-error.log
+dist/
+public/build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tooling
+.php_cs.cache
+.phpstan/cache/
+psalm.xml
+.psalm
+
+# Ignore vendor binaries (optional)
+/vendor/bin/
