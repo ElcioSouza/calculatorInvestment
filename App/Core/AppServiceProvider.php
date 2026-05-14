@@ -10,7 +10,7 @@ class AppServiceProvider
     public function register(Container $container): void
     {
         $container->bind(AmountFormatterService::class, fn() => new AmountFormatterService(), true);
-        $container->bind(BusinessDayService::class, fn() => new BusinessDayService());
+        $container->bind(BusinessDayService::class, fn() => new BusinessDayService(),true);
 
         $container->bind(CalculateController::class, fn() => new CalculateController(), true);
 
