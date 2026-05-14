@@ -42,4 +42,7 @@ class Container
             $this->singletons[$key] = null;
         }
     }
+    private static function teste() {
+
+    }
 }

@@ -1,0 +1,27 @@
+<?php
+
+namespace App\Services;
+
+abstract class ServiceBase
+{
+    protected const DEFAULT_SCALE     = 6;
+    protected const DEFAULT_PRECISION = 2;
+
+    protected const IOF_TABLE = [
+        1  => '0.96', 2  => '0.93', 3  => '0.90', 4  => '0.86', 5  => '0.83',
+        6  => '0.80', 7  => '0.76', 8  => '0.73', 9  => '0.70', 10 => '0.66',
+        11 => '0.63', 12 => '0.60', 13 => '0.56', 14 => '0.53', 15 => '0.50',
+        16 => '0.46', 17 => '0.43', 18 => '0.40', 19 => '0.36', 20 => '0.33',
+        21 => '0.30', 22 => '0.26', 23 => '0.23', 24 => '0.20', 25 => '0.16',
+        26 => '0.13', 27 => '0.10', 28 => '0.06', 29 => '0.03', 30 => '0.00',
+    ];
+    
+    // relative national holiday
+    protected const FIXED_HOLIDAYS = [
+        '01-01', '04-21', '05-01', '09-07',
+        '10-12', '11-02', '11-15', '11-20', '12-25',
+    ];
+
+    // related to Easter: Carnival (-48, -47), Good Friday (-2), Corpus Christi (+60)
+    protected const EASTER_OFFSETS = [-48, -47, -2, 60];
+}
