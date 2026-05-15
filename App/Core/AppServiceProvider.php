@@ -13,8 +13,15 @@ class AppServiceProvider
         $container->bind(AmountFormatterService::class, fn() => new AmountFormatterService(), true);
         $container->bind(BusinessDayService::class, fn() => new BusinessDayService(),true);
         $container->bind(RateCalculationService::class, fn() => new RateCalculationService());
-        $container->singleton(TaxCalculationService::class, fn() => new TaxCalculationService());
+        $container->bind(TaxCalculationService::class, fn() => new TaxCalculationService());
         
+        $container->bind(
+            ProfitCalculationService::class,
+            fn($c) => new ProfitCalculationService(
+                $c->get(TaxCalculationService::class),
+                $c->get(AmountFormatterService::class)
+            )
+        );
 
         $container->bind(CalculateController::class, fn() => new CalculateController(), true);
 
