@@ -5,12 +5,16 @@ use App\Controllers\AppController;
 use App\Controllers\CalculateController;
 use App\Services\AmountFormatterService;
 use App\Services\BusinessDayService;
+use App\Services\TaxCalculationService;
 class AppServiceProvider
 {
     public function register(Container $container): void
     {
         $container->bind(AmountFormatterService::class, fn() => new AmountFormatterService(), true);
         $container->bind(BusinessDayService::class, fn() => new BusinessDayService(),true);
+        $container->bind(RateCalculationService::class, fn() => new RateCalculationService());
+        $container->singleton(TaxCalculationService::class, fn() => new TaxCalculationService());
+        
 
         $container->bind(CalculateController::class, fn() => new CalculateController(), true);
 
