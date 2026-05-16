@@ -5,7 +5,7 @@ namespace App\Core;
 class Container
 {
     private static ?self $instance = null;
-
+    
     private function __construct(
         private array $bindings = [], 
         private array $singletons = []
@@ -41,8 +41,5 @@ class Container
         if ($singleton) {
             $this->singletons[$key] = null;
         }
-    }
-    private static function teste() {
-
     }
 }

@@ -20,7 +20,8 @@ class AppServiceProvider
             fn($c) => new ProfitCalculationService(
                 $c->get(TaxCalculationService::class),
                 $c->get(AmountFormatterService::class)
-            )
+            ),
+          true
         );
 
         $container->bind(CalculateController::class, fn() => new CalculateController(), true);
