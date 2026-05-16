@@ -18,10 +18,41 @@ class AppServiceProvider
         $container->bind(
             ProfitCalculationService::class,
             fn($c) => new ProfitCalculationService(
-                $c->get(TaxCalculationService::class),
-                $c->get(AmountFormatterService::class)
+                $c->getInstancia(TaxCalculationService::class),
+                $c->getInstancia(AmountFormatterService::class)
             ),
           true
+        );
+
+        $container->bind(
+            InvestmentService::class,
+            fn($c) => new InvestmentService(
+                rateService: $c->getInstancia(RateCalculationService::class),
+                taxService: $c->getInstancia(TaxCalculationService::class),
+                profitService: $c->getInstancia(ProfitCalculationService::class),
+                businessDayService: $c->getInstancia(BusinessDayService::class),
+                formatter: $c->getInstancia(AmountFormatterService::class),
+                repository: new InMemoryInvestmentRepository(),
+            ),
+            true
+        );
+
+        $container->bind(
+            CalculateInvestmentUseCase::class,
+            fn($c) => new CalculateInvestmentUseCase(
+                service: $c->getInstancia(InvestmentService::class)
+            )
+        );
+        
+        $container->bind(
+            DailyReportService::class,
+            fn($c) => new DailyReportService(
+                $c->getInstancia(RateCalculationService::class),
+                $c->getInstancia(BusinessDayService::class),
+                $c->getInstancia(TaxCalculationService::class),
+                $c->getInstancia(ProfitCalculationService::class),
+                $c->getInstancia(AmountFormatterService::class),
+            )
         );
 
         $container->bind(CalculateController::class, fn() => new CalculateController(), true);

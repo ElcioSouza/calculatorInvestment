@@ -8,7 +8,7 @@ class Container
     
     private function __construct(
         private array $bindings = [], 
-        private array $singletons = []
+        private array $singletons = [],
     ) {}
 
     public static function getContainer(): self
@@ -31,9 +31,9 @@ class Container
             }
             return $this->singletons[$key];
         }
-
         return $this->bindings[$key]($this);
     }
+
 
     public function bind(string $key, callable $resolver, bool $singleton = false): void
     {
