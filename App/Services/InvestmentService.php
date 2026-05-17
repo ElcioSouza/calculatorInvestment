@@ -1,17 +1,18 @@
 <?php
 namespace App\Services;
 
-use DateTimeImmutable;
 use App\Contracts\CalculatesProfitInterface;
 use App\Contracts\CalculatesRateInterface;
 use App\Contracts\CalculatesTaxInterface;
 use App\Contracts\CountsBusinessDaysInterface;
 use App\Contracts\FormatsAmountInterface;
 use App\Contracts\InvestmentRepositoryInterface;
+use App\Helpers\InvestmentCalculationHelper as InvestmentCalculation;
 use App\ValueObjects\Investment;
 use App\ValueObjects\InvestmentInput;
+use DateTimeImmutable;
 
-class InvestmentService
+class InvestmentService extends ServiceBase
 {
     public function __construct(
         private CalculatesRateInterface $rateService,
@@ -19,6 +20,7 @@ class InvestmentService
         private CalculatesProfitInterface $profitService,
         private CountsBusinessDaysInterface $businessDayService,
         private FormatsAmountInterface $formatter,
+        private InvestmentCalculation $calculationInvestment,
         private InvestmentRepositoryInterface $repository,
     ) {}
 
@@ -29,7 +31,7 @@ class InvestmentService
 
     public function handle(InvestmentInput $input): Investment
     {
-    
+
         $result = $this->process($input);
 
         return $this->repository->save($input, $result);
@@ -43,14 +45,18 @@ class InvestmentService
         $days         = $this->resolveDays($applicationDT, $redemptionDT);
         $businessDays = $this->resolveBusinessDays($input);
 
-        $displayPercentage = $this->resolveDisplayPercentage($input);
+        $displayPercentage = $this->calculationInvestment->resolveDisplayPercentage($input, $this->rateService);
         $dailyPercentage   = $this->rateService->calculateDailyRateFromAnnual($displayPercentage);
 
         $dailyProfitDisplay                                            = $this->calculateDailyProfitDisplay($input, $dailyPercentage);
-        [$amountBrutoRaw, $amountBruto, $profitBrutoRaw, $profitBruto] = $this->calculateGrossValues(
+        [$amountBrutoRaw, $amountBruto, $profitBrutoRaw, $profitBruto] = $this->calculationInvestment->calculateGrossValues(
             $input,
             $dailyPercentage,
-            $redemptionDT
+            $redemptionDT,
+            $this->businessDayService,
+            $this->rateService,
+            $this->profitService,
+            $this->formatter
         );
         [$iofValue, $amountLiquid] = $this->calculateTaxValues(
             $input,
@@ -99,43 +105,6 @@ class InvestmentService
             $input->applicationDate,
             $input->redemptionDate
         );
-    }
-    private function resolveDisplayPercentage(InvestmentInput $input): string
-    {
-        $rateType = strtolower(trim($input->rateType));
-
-        if ($rateType === 'pre') {
-            return bcdiv($input->preFixedAnnualRate, '1', 8);
-        }
-
-        $cdiCurrentRate = $input->cdiOver !== ''
-            ? $input->cdiOver
-            : $this->rateService->convertSelicMetaToOver($input->selicMeta, $input->selicIsOver);
-
-        return $this->rateService->calculateByCDI($cdiCurrentRate, $input->cdiPercentage);
-    }
-
-    private function calculateGrossValues(
-        InvestmentInput $input,
-        string $dailyPercentage,
-        DateTimeImmutable $redemptionDT
-    ): array {
-        $businessDaysForCalc = $this->businessDayService->countBusinessDays(
-            $input->applicationDate,
-            $redemptionDT->format('Y-m-d')
-        );
-
-        $amountBrutoRaw = $this->rateService->calculateAmountByBusinessDays(
-            $input->initialCapital,
-            $dailyPercentage,
-            $businessDaysForCalc
-        );
-
-        $amountBruto    = $this->formatter->normalizeAmountRounded($amountBrutoRaw);
-        $profitBrutoRaw = $this->profitService->calculateProfitBruto($input->initialCapital, $amountBrutoRaw);
-        $profitBruto    = $this->formatter->normalizeAmountRounded($profitBrutoRaw);
-
-        return [$amountBrutoRaw, $amountBruto, $profitBrutoRaw, $profitBruto];
     }
     private function calculateTaxValues(
         InvestmentInput $input,

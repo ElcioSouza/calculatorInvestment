@@ -3,10 +3,10 @@ namespace App\Services;
 
 use App\Services\AmountFormatterService;
 use App\Services\BusinessDayService;
+use App\Helpers\InvestmentCalculationHelper as InvestmentCalculation;
 use App\Services\ProfitCalculationService;
 use App\Services\RateCalculationService;
 use App\Services\TaxCalculationService;
-use App\Services\InvestmentService;
 use App\ValueObjects\Investment;
 use App\ValueObjects\InvestmentInput;
 use DateTimeImmutable;
@@ -20,8 +20,8 @@ class DailyReportService
         private BusinessDayService $businessDayService,
         private TaxCalculationService $taxService,
         private ProfitCalculationService $profitService,
-        private AmountFormatterService $formatterService,
-        private InvestmentService $investService
+        private InvestmentCalculation $calculationInvestment,
+        private AmountFormatterService $formatterService
     ) {}
     public function generate(InvestmentInput $input, Investment $result): void
     {
@@ -36,11 +36,32 @@ class DailyReportService
         );
 
         $dailyPercentage = $this->getDailyPercentage($input);
+        [$amountBrutoRaw, $amountBruto, $profitBrutoRaw, $profitBruto] = $this->calculationInvestment->calculateGrossValues(
+            $input,
+            $dailyPercentage,
+            $redemptionDate,
+            $this->businessDayService,
+            $this->rateService,
+            $this->profitService,
+            $this->formatterService
+        );
+        $amountDays = $applicationDate->diff($redemptionDate)->days;
+        $currentBusinessDays = $this->resolveBusinessDays($input);
 
         $this->printHeader();
 
         for ($day = $applicationDate, $displayDay = 0; $day <= $periodEndDate; $day = $day->modify('+1 day'), $displayDay++) {
-            $this->printDayRow($input, $day, $dailyPercentage, $displayDay, $businessDaysInPeriod);
+            $this->printDayRow(
+                $input,
+                $day,
+                $displayDay,
+                $businessDaysInPeriod,
+                $amountDays,
+                $currentBusinessDays,
+                $amountBrutoRaw,
+                $amountBruto,
+                $profitBruto
+            );
         }
 
         $this->printFooter($input);
@@ -53,7 +74,7 @@ class DailyReportService
 
     private function getDailyPercentage(InvestmentInput $input): float
     {
-        return (float) $this->investService->resolveDisplayPercentage($input);
+        return (float) $this->calculationInvestment->resolveDisplayPercentage($input, $this->rateService);
     }
 
 
@@ -85,27 +106,21 @@ class DailyReportService
     private function printDayRow(
         InvestmentInput $input,
         DateTimeImmutable $day,
-        float $dailyPercentage,
         int $displayDay,
-        int $businessDaysInPeriod
+        int $businessDaysInPeriod,
+        int $amountDays,
+        int $currentBusinessDays,
+        string $amountBrutoRaw,
+        string $amountBruto,
+        string $profitBruto
     ): void {
 
         if ($this->shouldSkipDay($day, $displayDay)) {
             return;
         }
 
-        $applicationDT = new DateTimeImmutable($input->applicationDate);
-        $redemptionDT  = new DateTimeImmutable($input->redemptionDate);
-
-        $amountdays         = $this->investService->resolveDays($applicationDT, $redemptionDT);
-        $currentBusinessDays = $this->resolveBusinessDays($input);
-
-        $amountBruto  = $this->formatterService->normalizeAmountRounded($AmountRaw);
-        $profitBrutoRaw = $this->profitService->calculateProfitBruto($input->initialCapital, $AmountRaw);
-        $ProfitBruto = $this->formatterService->normalizeAmountRounded($ProfitBruto);
-
-        $IofValue     = $this->getIofValue($input, $ProfitBruto, $displayDay);
-        $AmountLiquid = $this->getLiquidAmount($input, $AmountRaw, $displayDay);
+        $IofValue     = $this->getIofValue($input, $profitBruto, $displayDay);
+        $AmountLiquid = $this->getLiquidAmount($input, $amountBrutoRaw, $displayDay);
         $ProfitLiquid = $this->profitService->calculateProfitLiquid($input->initialCapital, $AmountLiquid);
         $ProfitLiquid = $this->formatterService->normalizeAmountRounded($ProfitLiquid);
 
@@ -118,11 +133,11 @@ class DailyReportService
         printf(
             "%-12s %6d %11d %9s %13s %14s %12s %14s\n",
             $day->format('d/m/Y'),
-            $amountdays,
+            $amountDays,
             $currentBusinessDays,
             number_format($monthProgress, 2, ',', '.') . '%',
             number_format((float) $amountBruto, 2, ',', '.'),
-            number_format((float) $ProfitBruto, 2, ',', '.'),
+            number_format((float) $profitBruto, 2, ',', '.'),
             number_format((float) $IofValue, 2, ',', '.'),
             number_format((float) $ProfitLiquid, 2, ',', '.')
         );
