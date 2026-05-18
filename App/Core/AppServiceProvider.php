@@ -1,19 +1,31 @@
 <?php
 namespace App\Core;
 
-use App\Controllers\AppController;
+use App\Controllers\CliController;
 use App\Controllers\CalculateController;
+use App\Factories\InvestmentInputFactory;
 use App\Helpers\DefaultInvestmentCalculationHelper;
 use App\Helpers\InvestmentCalculationHelper as InvestmentCalculation;
+use App\Repositories\InMemoryInvestmentRepository;
 use App\Services\AmountFormatterService;
 use App\Services\BusinessDayService;
+use App\Services\CdiRateService;
+use App\Services\DailyReportService;
+use App\Services\InvestmentService;
+use App\Services\ProfitCalculationService;
+use App\Services\RateCalculationService;
 use App\Services\TaxCalculationService;
+use App\UseCases\CalculateInvestmentUseCase;
 class AppServiceProvider
 {
     public function register(Container $container): void
     {
         $container->bind(AmountFormatterService::class, fn() => new AmountFormatterService(), true);
         $container->bind(BusinessDayService::class, fn() => new BusinessDayService(),true);
+        $container->bind(CdiRateService::class, fn() => new CdiRateService(), true);
+        $container->bind(InvestmentInputFactory::class, fn($c) => new InvestmentInputFactory(
+            $c->getInstancia(CdiRateService::class)
+        ), true);
         $container->bind(InvestmentCalculation::class, fn() => new DefaultInvestmentCalculationHelper(), true);
         $container->bind(RateCalculationService::class, fn() => new RateCalculationService());
         $container->bind(TaxCalculationService::class, fn() => new TaxCalculationService());
@@ -60,12 +72,12 @@ class AppServiceProvider
             )
         );
 
-        $container->bind(CalculateController::class, fn() => new CalculateController(
-            new InvestmentInputFactory(),
-            $c->getInstancia(CalculateInvestmentUseCase::class)
+        $container->bind(CalculateController::class, fn($c) => new CalculateController(
+                $c->getInstancia(InvestmentInputFactory::class),
+                $c->getInstancia(CalculateInvestmentUseCase::class)
         ), true);
 
-        $container->bind(AppController::class, fn($c) => new AppController(
+        $container->bind(CliController::class, fn($c) => new CliController(
             calculateController: $c->getInstancia(CalculateController::class)
         ), true);
     }

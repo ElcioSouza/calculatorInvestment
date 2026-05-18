@@ -47,8 +47,6 @@ class InvestmentService extends ServiceBase
 
         $displayPercentage = $this->calculationInvestment->resolveDisplayPercentage($input, $this->rateService);
         $dailyPercentage   = $this->rateService->calculateDailyRateFromAnnual($displayPercentage);
-
-        $dailyProfitDisplay                                            = $this->calculateDailyProfitDisplay($input, $dailyPercentage);
         [$amountBrutoRaw, $amountBruto, $profitBrutoRaw, $profitBruto] = $this->calculationInvestment->calculateGrossValues(
             $input,
             $dailyPercentage,
@@ -58,6 +56,18 @@ class InvestmentService extends ServiceBase
             $this->profitService,
             $this->formatter
         );
+        $dailyProfitDisplay = $input->isIsento
+            ? $this->profitService->calculateDailyProfitLiquidIsento(
+                $input->initialCapital,
+                $amountBrutoRaw,
+                $businessDays
+            )
+            : $this->profitService->calculateDailyProfitLiquid(
+                $input->initialCapital,
+                $amountBrutoRaw,
+                $days,
+                $businessDays
+            );
         [$iofValue, $amountLiquid] = $this->calculateTaxValues(
             $input,
             $profitBrutoRaw,

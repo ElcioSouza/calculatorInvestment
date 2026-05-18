@@ -1,11 +1,11 @@
 <?php
 require __DIR__ . '/bootstrap.php';
-use App\Controllers\AppController;
+use App\Controllers\CliController;
 
 $argv = $_SERVER['argv'] ?? [];
 
 try {
-    $controller = $container->getInstancia(AppController::class);
+    $controller = $container->getInstancia(CliController::class);
     if (method_exists($controller, 'execute')) {
         $controller->execute($argv);
     }
