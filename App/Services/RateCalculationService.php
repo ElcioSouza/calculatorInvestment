@@ -39,15 +39,14 @@ class RateCalculationService extends ServiceBase implements CalculatesRateInterf
 
     public function calculateAmountByBusinessDays(string $initialCapital, string $dailyRatePercent, int $businessDays): string
     {
-        $dailyRate = bcdiv($dailyRatePercent, '100', $this->scale);
-        $step      = bcadd('1', $dailyRate, $this->scale);
-        $factor    = '1';
 
+        $dailyRate = (float)str_replace(',', '.', $dailyRatePercent) / 100.0;
+        $saldo = round((float)$initialCapital, 2);
         for ($day = 0; $day < $businessDays; $day++) {
-            $factor = bcmul($factor, $step, $this->scale);
+            $rendimento = round($saldo * $dailyRate, 2);
+            $saldo = round($saldo + $rendimento, 2);
         }
-
-        return bcmul($initialCapital, $factor, $this->scale);
+        return sprintf('%.2F', $saldo);
     }
 
     public function calculateAmountBruto(string $initialCapital, string $cdiCurrentRate): string

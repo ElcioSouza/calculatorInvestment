@@ -16,12 +16,12 @@ abstract class ServiceBase
         26 => '0.13', 27 => '0.10', 28 => '0.06', 29 => '0.03', 30 => '0.00',
     ];
     
-    // relative national holiday
+    
     protected const FIXED_HOLIDAYS = [
         '01-01', '04-21', '05-01', '09-07',
         '10-12', '11-02', '11-15', '11-20', '12-25',
     ];
 
-    // related to Easter: Carnival (-48, -47), Good Friday (-2), Corpus Christi (+60)
+
     protected const EASTER_OFFSETS = [-48, -47, -2, 60];
 }

@@ -30,33 +30,43 @@ class DailyReportService
 
         $iofPeriodEnd = $applicationDate->modify('+30 days');
         $periodEndDate = $this->getLoopEndDate($redemptionDate, $iofPeriodEnd);
-        $businessDaysInPeriod = $this->countBusinessDaysUntil(
+        $businessDaysInPeriod = $this->businessDayService->countBusinessDays(
             $input->applicationDate,
             $iofPeriodEnd->modify('+1 day')->format('Y-m-d')
         );
 
         $dailyPercentage = $this->getDailyPercentage($input);
-        [$amountBrutoRaw, $amountBruto, $profitBrutoRaw, $profitBruto] = $this->calculationInvestment->calculateGrossValues(
-            $input,
-            $dailyPercentage,
-            $redemptionDate,
-            $this->businessDayService,
-            $this->rateService,
-            $this->profitService,
-            $this->formatterService
-        );
-        $amountDays = $applicationDate->diff($redemptionDate)->days;
-        $currentBusinessDays = $this->resolveBusinessDays($input);
 
         $this->printHeader();
 
         for ($day = $applicationDate, $displayDay = 0; $day <= $periodEndDate; $day = $day->modify('+1 day'), $displayDay++) {
+                
+                $businessDayEnd = $day > $applicationDate ? $day->modify('-1 day')->format('Y-m-d') : $applicationDate->format('Y-m-d');
+            $currentBusinessDays = $this->businessDayService->countBusinessDays(
+                $input->applicationDate,
+                $businessDayEnd
+            );
+
+            
+            $daysSinceApplication = $applicationDate->diff($day)->days;
+
+            
+            [$amountBrutoRaw, $amountBruto, $profitBrutoRaw, $profitBruto] = $this->calculationInvestment->calculateGrossValues(
+                $input,
+                $dailyPercentage,
+                $day,
+                $this->businessDayService,
+                $this->rateService,
+                $this->profitService,
+                $this->formatterService
+            );
+
             $this->printDayRow(
                 $input,
                 $day,
                 $displayDay,
                 $businessDaysInPeriod,
-                $amountDays,
+                $daysSinceApplication,
                 $currentBusinessDays,
                 $amountBrutoRaw,
                 $amountBruto,
@@ -74,7 +84,9 @@ class DailyReportService
 
     private function getDailyPercentage(InvestmentInput $input): float
     {
-        return (float) $this->calculationInvestment->resolveDisplayPercentage($input, $this->rateService);
+        $annualPercentage = $this->calculationInvestment->resolveDisplayPercentage($input, $this->rateService);
+
+        return (float) $this->rateService->calculateDailyRateFromAnnual($annualPercentage);
     }
 
 

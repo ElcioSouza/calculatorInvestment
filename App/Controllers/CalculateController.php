@@ -13,12 +13,17 @@ class CalculateController
         private CalculateInvestmentUseCase $calculateInvestmentUseCase
     ) {}
 
-    public function execute(array $argv): Investment
+    public function execute(array $argv): array
     {
         ConsoleInput::showInvestmentDefaults();
-        
+
         $investmentInput = $this->investmentInputFactory->create($argv);
 
-        return $this->calculateInvestmentUseCase->execute($investmentInput);
+        $result = $this->calculateInvestmentUseCase->execute($investmentInput);
+
+        return [
+            'input' => $investmentInput,
+            'result' => $result,
+        ];
     }
 }

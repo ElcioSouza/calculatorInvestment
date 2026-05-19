@@ -45,7 +45,7 @@ class TaxCalculationService extends ServiceBase implements CalculatesTaxInterfac
 
     public function calculateIOFValue(string $lucroBruto, int $days): string
     {
-        if ($days >= 30 || $days <= 0) {
+        if ($days > 30 || $days <= 0) {
             return '0.000000';
         }
 

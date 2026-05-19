@@ -18,20 +18,45 @@ class CdiApiClient
             return null;
         }
 
-        foreach (array_reverse($data) as $entry) {
-            if (!isset($entry['valor'])) {
+        $latestEntry = null;
+        $latestDate = null;
+
+        foreach ($data as $entry) {
+            if (!isset($entry['valor'], $entry['data'])) {
                 continue;
             }
 
-            $valor = (float) str_replace(',', '.', trim((string) $entry['valor']));
-            $date  = (string) ($entry['data'] ?? '');
+            $date = $this->parseDate((string) $entry['data']);
+            if ($date === null) {
+                continue;
+            }
 
-            if ($valor > 0.0) {
-                return ['valor' => $valor, 'data' => $date];
+            if ($latestDate === null || $date > $latestDate) {
+                $latestDate = $date;
+                $latestEntry = $entry;
             }
         }
 
-        return null;
+        if ($latestEntry === null) {
+            return null;
+        }
+
+        $valor = (float) str_replace(',', '.', trim((string) $latestEntry['valor']));
+        if ($valor <= 0.0) {
+            return null;
+        }
+
+        return [
+            'valor' => $valor,
+            'data' => (string) $latestEntry['data'],
+        ];
+    }
+
+    private function parseDate(string $date): ?\DateTimeImmutable
+    {
+        $parsed = \DateTimeImmutable::createFromFormat('d/m/Y', $date);
+
+        return $parsed instanceof \DateTimeImmutable ? $parsed : null;
     }
 
     private function fetchUrl(string $url): ?string

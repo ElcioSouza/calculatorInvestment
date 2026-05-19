@@ -72,10 +72,17 @@ final class InvestmentInputFactory extends BaseFactory
         $cdiOver   = '';
         $cdiSource = '';
         if ($rateType !== 'pre') {
-            $cdiResult  = $this->cdiRateService->fetchCdiAnnual($selicMeta);
-            $cdiOver    = $cdiResult['rate'];
-            $cdiSource  = $cdiResult['source'];
-            echo "CDI utilizado: {$cdiOver}% a.a. [{$cdiSource}]\n";
+            $manualCdiAnnual = ConsoleInput::option($argv, 'cdi-annual', '');
+            if ($manualCdiAnnual !== '') {
+                $cdiOver = $this->normalizePositiveNumberOrFail(trim($manualCdiAnnual), 'CDI anual manual');
+                $cdiSource = 'Manual';
+                echo "CDI utilizado (manual): {$cdiOver}% a.a.\n";
+            } else {
+                $cdiResult  = $this->cdiRateService->fetchCdiAnnual($selicMeta);
+                $cdiOver    = $cdiResult['rate'];
+                $cdiSource  = $cdiResult['source'];
+                echo "CDI utilizado: {$cdiOver}% a.a. [{$cdiSource}]\n";
+            }
         }
 
         return new InvestmentInput(

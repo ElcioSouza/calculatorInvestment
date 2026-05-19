@@ -3,13 +3,12 @@
 namespace App\Controllers;
 
 use App\ValueObjects\Investment;
-
 class CliController
 {
-    public function __construct(private CalculateController $calculateController) {}
+    public function __construct(private \App\Application\CliApplication $app) {}
 
     public function execute(array $argv): Investment
     {
-        return $this->calculateController->execute($argv);
+        return $this->app->execute($argv);
     }
 }

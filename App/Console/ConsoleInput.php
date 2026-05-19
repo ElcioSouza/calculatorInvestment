@@ -44,7 +44,7 @@ final class ConsoleInput
         return $input === '' ? $default : $input;
     }
 
-    // Esta função serve para capturar valores que o usuário passa como parâmetros
+
     public static function askOption(string $message, array $allowed, string $default): string
     {
         while (true) {
