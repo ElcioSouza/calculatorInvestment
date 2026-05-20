@@ -46,9 +46,9 @@ final class InvestmentInputFactory extends BaseFactory
         $initialCapital = ConsoleInput::option($argv, 'capital', '');
         $initialCapital = $initialCapital !== ''
             ? $this->normalizePositiveNumberOrFail(trim($initialCapital), 'Capital inicial')
-            : $this->askPositiveNumber("Capital inicial [42000]: ", '42000', 'Capital inicial');
+            : $this->askPositiveNumber("Capital inicial [10000]: ", '10000', 'Capital inicial');
 
-        $cdiPercentage      = ConsoleInput::option($argv, 'cdi', '130');
+        $cdiPercentage      = ConsoleInput::option($argv, 'cdi', '100');
         $selicMeta          = ConsoleInput::option($argv, 'selic-meta', '14.40');
         $preFixedAnnualRate = ConsoleInput::option($argv, 'pre-rate', '11.50');
 
@@ -61,7 +61,7 @@ final class InvestmentInputFactory extends BaseFactory
             $cdiPercentage = ConsoleInput::option($argv, 'cdi', '');
             $cdiPercentage = $cdiPercentage !== ''
                 ? $this->normalizePositiveNumberOrFail(trim($cdiPercentage), 'Rentabilidade (% do CDI)')
-                : $this->askPositiveNumber("Rentabilidade (% do CDI) [130]: ", '130', 'Rentabilidade (% do CDI)');
+                : $this->askPositiveNumber("Rentabilidade (% do CDI) [100]: ", '100', 'Rentabilidade (% do CDI)');
 
             $selicMeta = ConsoleInput::option($argv, 'selic-meta', '');
             $selicMeta = $selicMeta !== ''
@@ -76,12 +76,11 @@ final class InvestmentInputFactory extends BaseFactory
             if ($manualCdiAnnual !== '') {
                 $cdiOver = $this->normalizePositiveNumberOrFail(trim($manualCdiAnnual), 'CDI anual manual');
                 $cdiSource = 'Manual';
-                echo "CDI utilizado (manual): {$cdiOver}% a.a.\n";
+               
             } else {
                 $cdiResult  = $this->cdiRateService->fetchCdiAnnual($selicMeta);
                 $cdiOver    = $cdiResult['rate'];
                 $cdiSource  = $cdiResult['source'];
-                echo "CDI utilizado: {$cdiOver}% a.a. [{$cdiSource}]\n";
             }
         }
 

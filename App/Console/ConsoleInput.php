@@ -91,8 +91,8 @@ final class ConsoleInput
             echo "Taxa [1=pré 2=pós] (padrão: 2)\n";
             echo "Data de aplicação [{$defaultDate}]\n";
             echo "Prazo de investimento (meses de calendário) [1]\n";
-            echo "Capital inicial [42000]\n";
-            echo "Rentabilidade (% do CDI) [130]\n";
+            echo "Capital inicial [10000]\n";
+            echo "Rentabilidade (% do CDI) [100]\n";
             echo "Selic Meta [14.40]\n\n";
         }
     }
