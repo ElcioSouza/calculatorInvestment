@@ -68,7 +68,7 @@ class InvestmentService extends ServiceBase
                 $days,
                 $businessDays
             );
-        [$iofValue, $amountLiquid] = $this->calculateTaxValues(
+        [$iofValue, $amountLiquid, $iofRaw] = $this->calculateTaxValues(
             $input,
             $profitBrutoRaw,
             $amountBrutoRaw,
@@ -88,7 +88,7 @@ class InvestmentService extends ServiceBase
         $irTaxAmount = $input->isIsento
             ? '0.00'
             : $this->formatter->normalizeAmount(
-            bcsub(bcsub($profitBrutoRaw, $iofValue, 6), $profitLiquid, 6)
+            bcsub(bcsub($profitBrutoRaw, $iofRaw, 6), $profitLiquid, 6)
         );
 
         return new Investment(
@@ -125,24 +125,24 @@ class InvestmentService extends ServiceBase
         DateTimeImmutable $redemptionDT
     ): array {
         if ($input->isIsento) {
-            return ['0.00', $amountBrutoRaw];
+            return ['0.00', $amountBrutoRaw, '0.00'];
         }
 
         $iofLimitDT = $applicationDT->modify('+30 days');
         $iofEndDT   = $redemptionDT < $iofLimitDT ? $redemptionDT : $iofLimitDT;
         $daysForIOF = $applicationDT->diff($iofEndDT)->days;
 
-        $iofValue = $this->formatter->normalizeAmount(
-            $this->taxService->calculateIOFValue($profitBrutoRaw, $daysForIOF)
-        );
+        $iofRaw = $this->taxService->calculateIOFValue($profitBrutoRaw, $daysForIOF);
+        $iofValue = $this->formatter->normalizeAmount($iofRaw);
 
         $amountLiquid = $this->taxService->calculateIR(
             $input->initialCapital,
             $amountBrutoRaw,
             $days,
-            false
+            false,
+            $iofRaw
         );
 
-        return [$iofValue, $amountLiquid];
+        return [$iofValue, $amountLiquid, $iofRaw];
     }
 }

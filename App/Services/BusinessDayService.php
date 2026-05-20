@@ -50,7 +50,7 @@ class BusinessDayService extends ServiceBase implements CountsBusinessDaysInterf
         }
 
         $days   = 0;
-        $period = new DatePeriod($start, new DateInterval('P1D'), $end->modify('+1 day'));
+        $period = new DatePeriod($start, new DateInterval('P1D'), $end);
 
         foreach ($period as $date) {
             $weekday = (int)$date->format('N');

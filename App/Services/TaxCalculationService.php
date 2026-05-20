@@ -15,7 +15,7 @@ class TaxCalculationService extends ServiceBase implements CalculatesTaxInterfac
         $this->iofTable = $iofTable ?? self::IOF_TABLE;
     }
 
-    public function calculateIR(string $initialCapital, string $amountBruto, int $days, bool $isIsento = false): string
+    public function calculateIR(string $initialCapital, string $amountBruto, int $days, bool $isIsento = false, ?string $iofValueOverride = null): string
     {
         $lucroBruto = bcsub($amountBruto, $initialCapital, $this->scale);
 
@@ -23,7 +23,7 @@ class TaxCalculationService extends ServiceBase implements CalculatesTaxInterfac
             return bcadd($initialCapital, $lucroBruto, $this->scale);
         }
 
-        $iofValue         = $this->calculateIOFValue($lucroBruto, $days);
+        $iofValue         = $iofValueOverride ?? $this->calculateIOFValue($lucroBruto, $days);
         $baseTributavelIR = bcsub($lucroBruto, $iofValue, $this->scale);
 
         if (bccomp($baseTributavelIR, '0', $this->scale) <= 0) {

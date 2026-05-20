@@ -26,33 +26,9 @@ class CdiRateService
         string $spreadFallback = '-0.10'
     ): array {
         
-        $result = $this->apiClient->fetchLatestRecord(self::SGS_CDI_ANNUAL_URL);
-        if ($result !== null) {
-            ['valor' => $valor, 'data' => $data] = $result;
-            if ($valor > 5.0 && $valor < 100.0) {
-                
-                return [
-                    'rate'   => number_format($valor, 8, '.', ''),
-                    'source' => "BC/SGS série 4390 - CDI a.a. ({$data})",
-                ];
-            }
-            if ($valor > 0.0 && $valor <= 5.0) {
-                
-                $annual = (pow(1.0 + $valor / 100.0, 12) - 1.0) * 100.0;
-                return [
-                    'rate'   => number_format($annual, 8, '.', ''),
-                    'source' => sprintf(
-                        'BC/SGS série 4390 - CDI (reportado %.6f%%), convertido mensal→a.a. (%s)',
-                        $valor,
-                        $data
-                    ),
-                ];
-            }
-        }
-        
-        $result = $this->apiClient->fetchLatestRecord(self::SGS_CDI_DAILY_URL);
-        if ($result !== null) {
-            ['valor' => $valorDiario, 'data' => $data] = $result;
+        $dailyResult = $this->apiClient->fetchLatestRecord(self::SGS_CDI_DAILY_URL);
+        if ($dailyResult !== null) {
+            ['valor' => $valorDiario, 'data' => $data] = $dailyResult;
             if ($this->calculator->isDailyRateValid($valorDiario)) {
                 $annual = $this->calculator->annualizeDailyRate($valorDiario);
                 return [
@@ -61,7 +37,30 @@ class CdiRateService
                 ];
             }
         }
-
+        
+        $monthlyResult = $this->apiClient->fetchLatestRecord(self::SGS_CDI_ANNUAL_URL);
+        if ($monthlyResult !== null) {
+            ['valor' => $valor, 'data' => $data] = $monthlyResult;
+            if ($valor > 0.0 && $valor < 100.0) {
+                if ($valor > 5.0) {
+                    
+                    return [
+                        'rate'   => number_format($valor, 8, '.', ''),
+                        'source' => "BC/SGS série 4390 - CDI a.a. ({$data})",
+                    ];
+                }
+                
+                $annual = (pow(1.0 + $valor / 100.0, 12) - 1.0) * 100.0;
+                return [
+                    'rate'   => number_format($annual, 8, '.', ''),
+                    'source' => sprintf(
+                        'BC/SGS série 4390 - CDI mensal %.4f%% → a.a. (%s)',
+                        $valor,
+                        $data
+                    ),
+                ];
+            }
+        }
 
         return $this->fallback($selicMetaFallback, $spreadFallback, 'API BC indisponível');
     }
