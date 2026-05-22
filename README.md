@@ -593,7 +593,7 @@ calculatorInvestment/
 ├── index.php                              # Entry point (CLI + HTTP)
 ├── composer.json
 ├── htaccess                               # Apache rewrite rules (PHP built-in server)
-├── nginx.conf.example                     # Exemplo de configuracao Nginx
+├──                      # Exemplo de configuracao Nginx
 │
 ├── App/
 │   ├── Application/
