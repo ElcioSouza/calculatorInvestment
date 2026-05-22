@@ -1,13 +1,12 @@
 <?php
-
 namespace App\Core;
 
 class Container
 {
     private static ?self $instance = null;
-    
+
     private function __construct(
-        private array $bindings = [], 
+        private array $bindings = [],
         private array $singletons = [],
     ) {}
 
@@ -21,7 +20,7 @@ class Container
 
     public function getInstancia(string $key): mixed
     {
-        if (!isset($this->bindings[$key])) {
+        if (! isset($this->bindings[$key])) {
             throw new \Exception("Binding not found: {$key}");
         }
 
@@ -34,10 +33,9 @@ class Container
         return $this->bindings[$key]($this);
     }
 
-
     public function bind(string $key, callable $resolver, bool $singleton = false): void
     {
-       $this->bindings[$key] = $resolver;
+        $this->bindings[$key] = $resolver;
         if ($singleton) {
             $this->singletons[$key] = null;
         }

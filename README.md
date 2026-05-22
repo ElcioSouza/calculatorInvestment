@@ -2,15 +2,19 @@
 
 **Calculadora de investimentos em renda fixa brasileira (CDB, LCI, LCA)**
 
-Aplicação CLI em PHP que calcula o retorno de investimentos em CDB, LCI e LCA, utilizando taxas oficiais do **Banco Central do Brasil** (CDI/Selic) via API SGS (Sistema Gerenciador de Séries Temporais). Realiza cálculos de juros compostos diários em dias úteis, aplica tributação regressiva de IR e IOF conforme a legislação brasileira, e gera relatórios detalhados de simulação.
+Aplicação em PHP (CLI + API REST) que calcula o retorno de investimentos em CDB, LCI e LCA, utilizando taxas oficiais do **Banco Central do Brasil** (CDI/Selic) via API SGS (Sistema Gerenciador de Séries Temporais). Realiza cálculos de juros compostos diários em dias úteis, aplica tributação regressiva de IR e IOF conforme a legislação brasileira, e gera relatórios detalhados de simulação.
 
 ---
 
 ## Índice
 
 - [Como Usar](#como-usar)
+  - [CLI (modo interativo)](#cli-modo-interativo)
+  - [API REST (modo HTTP)](#api-rest-modo-http)
 - [Exemplos](#exemplos)
 - [Fluxo de Dados](#fluxo-de-dados)
+  - [CLI](#cli)
+  - [API REST](#api-rest)
 - [Fórmulas](#fórmulas)
 - [Tecnologias](#tecnologias)
 - [Fontes de Dados (Banco Central do Brasil)](#fontes-de-dados-banco-central-do-brasil)
@@ -22,11 +26,13 @@ Aplicação CLI em PHP que calcula o retorno de investimentos em CDB, LCI e LCA,
 
 ## Como Usar
 
+### CLI (modo interativo)
+
 ```bash
 php index.php
 ```
 
-O programa opera em **modo interativo** (recomendado). Basta executar e responder às perguntas:
+O programa detecta automaticamente se está em modo CLI ou HTTP. No terminal, opera em **modo interativo**:
 
 ```
 1 - CDB
@@ -41,19 +47,51 @@ Também é possível passar argumentos via linha de comando:
 php index.php --tipo=1 --taxa=2 --aplicacao=2026-01-01 --meses=6 --capital=10000 --percentual=110 --selic=14.25
 ```
 
-### Opções CLI
+### API REST (modo HTTP)
 
-| Opção | Descrição | Valores |
-|-------|-----------|---------|
-| `--tipo` | Tipo de investimento | `1` (CDB), `2` (LCI), `3` (LCA) |
-| `--taxa` | Tipo de taxa | `1` (pré-fixado), `2` (pós-fixado) |
-| `--aplicacao` | Data de aplicação | `YYYY-MM-DD` |
-| `--meses` | Prazo em meses | Número inteiro positivo |
-| `--capital` | Capital inicial | Número decimal positivo |
-| `--percentual` | Percentual do CDI (pós) | Ex: `110` = 110% do CDI |
-| `--prefixado` | Taxa pré-fixada anual (pré) | Ex: `11.50` = 11,50% ao ano |
-| `--selic` | Taxa Selic Meta | Ex: `14.25` = 14,25% ao ano |
-| `--cdi` | Taxa CDI Over manual | Ex: `13.65` (opcional, se vazio busca da API do BCB) |
+Execute com o servidor embutido do PHP:
+
+```bash
+php -S localhost:8000
+```
+
+#### Rotas
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `GET` | `/api/calculate?investment_type=cdb&rate_type=pos&capital=10000&cdi=110&application_date=2026-01-01&months=6` | Calcula investimento via query string |
+| `POST` | `/api/calculate` | Calcula investimento via body JSON |
+| `PUT` | `/api/calculate/{id}` | Recalcula substituindo registro |
+| `DELETE` | `/api/calculate/{id}` | Remove registro |
+
+**Exemplo POST:**
+
+```bash
+curl -X POST http://localhost:8000/api/calculate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "investment_type": "cdb",
+    "rate_type": "pos",
+    "capital": 10000,
+    "cdi": 110,
+    "application_date": "2026-01-05",
+    "months": 6
+  }'
+```
+
+### Opções CLI / Parâmetros da API
+
+| Parâmetro | Descrição | Valores |
+|-----------|-----------|---------|
+| `investment_type` | Tipo de investimento | `cdb`, `lci`, `lca` |
+| `rate_type` | Tipo de taxa | `pre` (pré-fixado), `pos` (pós-fixado) |
+| `application_date` | Data de aplicação | `YYYY-MM-DD` |
+| `months` | Prazo em meses | Número inteiro positivo |
+| `capital` | Capital inicial | Número decimal positivo |
+| `cdi` | Percentual do CDI (pós) | Ex: `110` = 110% do CDI |
+| `pre_rate` | Taxa pré-fixada anual (pré) | Ex: `11.50` = 11,50% ao ano |
+| `selic_meta` | Taxa Selic Meta | Ex: `14.40` |
+| `cdi_annual` | Taxa CDI anual manual (opcional) | Ex: `13.65` |
 
 ---
 
@@ -225,6 +263,8 @@ Montante Liquido:                     R$ 5.093,00
 
 ## Fluxo de Dados
 
+### CLI
+
 ```
 Usuario (CLI)
   |
@@ -253,6 +293,35 @@ CliController --> CliApplication
   |
   +--> InvestmentResultController (exibe resultado formatado)
   +--> DailyReportService (tabela dia-a-dia do IOF)
+```
+
+### API REST
+
+```
+Cliente (curl/Postman/Insomnia)
+  |
+  v
+index.php --> bootstrap.php (Container + AppServiceProvider)
+  |
+  v
+HttpApplication (roteamento)
+  |
+  +--> GET|POST /api/calculate
+  |      +--> ApiController::calculate()
+  |             +--> HttpInputFactory::create()  (converte JSON em InvestmentInput)
+  |             |      +--> CdiRateService::fetchCdiAnnual()
+  |             +--> CalculateInvestmentUseCase
+  |             +--> InMemoryInvestmentRepository
+  |
+  +--> PUT /api/calculate/{id}
+  |      +--> ApiController::update()
+  |             +--> HttpInputFactory::create()
+  |             +--> CalculateInvestmentUseCase
+  |             +--> InMemoryInvestmentRepository
+  |
+  +--> DELETE /api/calculate/{id}
+         +--> ApiController::destroy()
+                +--> InMemoryInvestmentRepository
 ```
 
 ---
@@ -472,6 +541,7 @@ $$
 - **Datas:** `DateTimeImmutable`, `DatePeriod`, `DateInterval`
 - **Arquitetura:** Container DI, camada de serviços, presenters, repositories
 - **Banco de dados:** Nenhum (repositório em memória)
+- **Modos de execução:** CLI interativo + API REST (auto-detectado via `PHP_SAPI`)
 
 ---
 
@@ -520,12 +590,15 @@ Feriados fixos e móveis considerados no cálculo de dias úteis:
 ```
 calculatorInvestment/
 ├── bootstrap.php                          # Autoload, Container, AppServiceProvider
-├── index.php                              # Entry point CLI
+├── index.php                              # Entry point (CLI + HTTP)
 ├── composer.json
+├── htaccess                               # Apache rewrite rules (PHP built-in server)
+├── nginx.conf.example                     # Exemplo de configuracao Nginx
 │
 ├── App/
 │   ├── Application/
-│   │   └── CliApplication.php             # Orquestrador principal
+│   │   ├── CliApplication.php             # Orquestrador CLI
+│   │   └── HttpApplication.php            # Roteamento HTTP (API REST)
 │   ├── Console/
 │   │   └── ConsoleInput.php               # Leitura de argumentos CLI e interativo
 │   ├── Contracts/                         # Interfaces
@@ -537,15 +610,17 @@ calculatorInvestment/
 │   │   ├── ControllerInterface.php
 │   │   └── InvestmentRepositoryInterface.php
 │   ├── Controllers/
-│   │   ├── CliController.php
-│   │   ├── CalculateController.php
-│   │   └── InvestmentResultController.php
+│   │   ├── CliController.php              # Controller CLI
+│   │   ├── CalculateController.php        # Logica de calculo (CLI)
+│   │   ├── ApiController.php              # Controller da API REST
+│   │   └── InvestmentResultController.php # Exibicao de resultado (CLI)
 │   ├── Core/
 │   │   ├── Container.php                  # Container de injecao de dependencia
 │   │   └── AppServiceProvider.php         # Registro de todos os servicos
 │   ├── Factories/
 │   │   ├── BaseFactory.php                # Validacao, feriados, datas
-│   │   └── InvestmentInputFactory.php     # Cria InvestmentInput (com chamada a API do BCB)
+│   │   ├── InvestmentInputFactory.php     # Cria InvestmentInput (CLI)
+│   │   └── HttpInputFactory.php           # Cria InvestmentInput via JSON (API)
 │   ├── Helpers/
 │   │   ├── InvestmentCalculationHelper.php
 │   │   └── DefaultInvestmentCalculationHelper.php
@@ -608,7 +683,7 @@ Container de injeção de dependência (singleton).
 Provedor que registra todos os serviços no Container.
 
 #### `register(Container $container): void`
-- **Descrição:** Registra todos os serviços do sistema como singletons: `AmountFormatterService`, `BusinessDayService`, `CdiRateService`, `InvestmentInputFactory`, `InvestmentCalculation`, `RateCalculationService`, `TaxCalculationService`, `ProfitCalculationService`, `InvestmentService`, `CalculateInvestmentUseCase`, `DailyReportService`, `CalculateController`, `InvestmentPresenter`, `InvestmentResultController`, `CliApplication`, `CliController`.
+- **Descrição:** Registra todos os serviços do sistema como singletons: `AmountFormatterService`, `BusinessDayService`, `CdiRateService`, `InvestmentInputFactory`, `InvestmentCalculation`, `RateCalculationService`, `TaxCalculationService`, `ProfitCalculationService`, `InvestmentService`, `CalculateInvestmentUseCase`, `DailyReportService`, `CalculateController`, `InvestmentPresenter`, `InvestmentResultController`, `HttpInputFactory`, `ApiController`, `HttpApplication`, `CliApplication`, `CliController`.
 - **Parâmetros:**
   - `$container` (`Container`) — Instância do Container de DI.
 - **Retorno:** `void`
@@ -1471,5 +1546,60 @@ Value Object imutável com o resultado completo do investimento.
 | `$isIsento` | `bool` | Se o investimento é isento de IR |
 | `$days` | `int` | Dias corridos |
 | `$businessDays` | `int` | Dias úteis |
+
+---
+
+### App\Application\HttpApplication
+
+Roteador da API REST. Detecta método HTTP e path, direciona para o `ApiController`.
+
+#### `handle(): void`
+- **Descrição:** Lê `REQUEST_METHOD` e `REQUEST_URI`, faz o roteamento:
+  - `GET|POST /api/calculate` → `ApiController::calculate()`
+  - `PUT /api/calculate/{id}` → `ApiController::update()`
+  - `DELETE /api/calculate/{id}` → `ApiController::destroy()`
+  - Outras rotas → `404` com lista de rotas disponíveis.
+
+#### `resolveParams(string $method): array`
+- **Descrição:** Extrai parâmetros da requisição. Para `GET`, lê `$_GET`. Para `POST`/`PUT`, lê `php://input` como JSON (se `Content-Type: application/json`) ou `$_POST` (form-urlencoded).
+- **Parâmetros:**
+  - `$method` (`string`) — Método HTTP.
+- **Retorno:** `array` — Parâmetros mesclados.
+
+---
+
+### App\Controllers\ApiController
+
+Controller da API REST com respostas JSON.
+
+#### `calculate(array $params): void`
+- **Descrição:** Cria `InvestmentInput` via `HttpInputFactory`, executa o cálculo, persiste no repositório e retorna `201` com o payload completo.
+- **Parâmetros:**
+  - `$params` (`array`) — Parâmetros da requisição.
+
+#### `update(string $id, array $params): void`
+- **Descrição:** Busca registro por `id`, mescla parâmetros novos, recalcula e substitui o registro. Retorna `200` com `id` e `replaced_id`.
+- **Parâmetros:**
+  - `$id` (`string`) — ID do registro.
+  - `$params` (`array`) — Novos parâmetros.
+
+#### `destroy(string $id): void`
+- **Descrição:** Remove registro do repositório. Retorna `200` se removido, `404` se não encontrado.
+- **Parâmetros:**
+  - `$id` (`string`) — ID do registro.
+
+---
+
+### App\Factories\HttpInputFactory
+
+Factory que cria `InvestmentInput` a partir de parâmetros de requisição HTTP (JSON ou form).
+
+#### `__construct(CdiRateService $cdiRateService)`
+
+#### `create(array $params): InvestmentInput`
+- **Descrição:** Extrai e valida os parâmetros: `investment_type`, `rate_type`, `application_date`, `months`, `capital`, `cdi`, `selic_meta`, `pre_rate`, `cdi_annual`. Para investimentos pós-fixados, obtém a taxa CDI via API do BCB.
+- **Parâmetros:**
+  - `$params` (`array`) — Parâmetros da requisição.
+- **Retorno:** `InvestmentInput`
 
 ---

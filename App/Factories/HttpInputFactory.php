@@ -1,0 +1,103 @@
+<?php
+namespace App\Factories;
+
+use App\Services\CdiRateService;
+use App\ValueObjects\InvestmentInput;
+
+final class HttpInputFactory extends BaseFactory
+{
+    public function __construct(private readonly CdiRateService $cdiRateService)
+    {
+    }
+
+    public function create(array $params): InvestmentInput
+    {
+        $defaultDate = (new \DateTime())->format('Y-m-d');
+
+        $investmentType = $this->getParam($params, 'investment_type', 'cdb');
+        $investmentType = $this->normalizeInvestmentType($investmentType);
+
+        $rateType = $this->getParam($params, 'rate_type', 'pos');
+        $rateType = $this->normalizeRateType($rateType);
+
+        $applicationDateRaw = $this->getParam($params, 'application_date', $defaultDate);
+        $applicationDate    = $this->normalizeDateOrFail(trim($applicationDateRaw));
+
+        $monthsRaw = $this->getParam($params, 'months', '1');
+        $months    = $this->normalizePositiveIntegerOrFail(trim($monthsRaw), 'Prazo de investimento');
+
+        $redemptionDate = $this->calculateRedemptionDateByMonths($applicationDate, (int) $months);
+
+        $capitalRaw     = $this->getParam($params, 'capital', '10000');
+        $initialCapital = $this->normalizePositiveNumberOrFail(trim($capitalRaw), 'Capital inicial');
+
+        $cdiPercentage      = '100';
+        $selicMeta          = '14.40';
+        $preFixedAnnualRate = '11.50';
+
+        if ($rateType === 'pre') {
+            $preRateRaw         = $this->getParam($params, 'pre_rate', '11.50');
+            $preFixedAnnualRate = $this->normalizePositiveNumberOrFail(trim($preRateRaw), 'Taxa prefixada anual');
+        } else {
+            $cdiRaw        = $this->getParam($params, 'cdi', '100');
+            $selicRaw      = $this->getParam($params, 'selic_meta', '14.40');
+            $cdiPercentage = $this->normalizePositiveNumberOrFail(trim($cdiRaw), 'Rentabilidade (% do CDI)');
+            $selicMeta     = $this->normalizePositiveNumberOrFail(trim($selicRaw), 'Selic Meta');
+        }
+        
+        $cdiOver   = '';
+        $cdiSource = '';
+        if ($rateType !== 'pre') {
+            $manualCdiAnnual = $this->getParam($params, 'cdi_annual', '');
+            if ($manualCdiAnnual !== '') {
+                $cdiOver   = $this->normalizePositiveNumberOrFail(trim($manualCdiAnnual), 'CDI anual manual');
+                $cdiSource = 'Manual';
+            } else {
+                $cdiResult = $this->cdiRateService->fetchCdiAnnual($selicMeta);
+                $cdiOver   = $cdiResult['rate'];
+                $cdiSource = $cdiResult['source'];
+            }
+        }
+
+        return new InvestmentInput(
+            initialCapital: $initialCapital,
+            investmentType: $investmentType,
+            rateType: $rateType,
+            cdiPercentage: $cdiPercentage,
+            selicMeta: $selicMeta,
+            preFixedAnnualRate: $preFixedAnnualRate,
+            selicIsOver: false,
+            applicationDate: $applicationDate,
+            redemptionDate: $redemptionDate,
+            months: (int) $months,
+            cdiOver: $cdiOver,
+        );
+    }
+
+    private function getParam(array $params, string $key, string $default): string
+    {
+        $value = $params[$key] ?? $default;
+        return $value === '' ? $default : (string) $value;
+    }
+
+    private function normalizeRateType(string $value): string
+    {
+        $value = strtolower(trim($value));
+        return match ($value) {
+            '1', 'pre', 'pré' => 'pre',
+            '2', 'pos', 'pós', 'post' => 'pos',
+            default => $value,
+        };
+    }
+
+    private function normalizeInvestmentType(string $value): string
+    {
+        $value = strtolower(trim($value));
+        return match ($value) {
+            '1', 'cdb' => 'cdb',
+            '2', 'lci' => 'lci',
+            '3', 'lca' => 'lca',
+            default => $value,
+        };
+    }
+}

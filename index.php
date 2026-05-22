@@ -1,15 +1,27 @@
 <?php
 require __DIR__ . '/bootstrap.php';
-use App\Controllers\CliController;
 
-$argv = $_SERVER['argv'] ?? [];
+use App\Controllers\CliController;
+use App\Application\HttpApplication;
+
+$isCli = in_array(PHP_SAPI, ['cli', 'phpdbg'], true);
 
 try {
-    $controller = $container->getInstancia(CliController::class);
-    if (method_exists($controller, 'execute')) {
+    if ($isCli) {
+        $argv = $_SERVER['argv'] ?? [];
+        $controller = $container->getInstancia(CliController::class);
         $controller->execute($argv);
+    } else {
+        $app = $container->getInstancia(HttpApplication::class);
+        $app->handle();
     }
 } catch (\Exception $exception) {
-    fwrite(STDERR, $exception->getMessage() . PHP_EOL);
-    exit(1);
+    if ($isCli) {
+        fwrite(STDERR, $exception->getMessage() . PHP_EOL);
+        exit(1);
+    } else {
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error' => $exception->getMessage()], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    }
 }
