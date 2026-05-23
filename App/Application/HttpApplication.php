@@ -1,12 +1,20 @@
 <?php
 namespace App\Application;
 
-use App\Controllers\ApiController;
+use App\Controllers\CreateInvestmentController;
+use App\Controllers\DeleteInvestmentController;
+use App\Controllers\ListInvestmentsController;
+use App\Controllers\ShowInvestmentController;
+use App\Controllers\UpdateInvestmentController;
 
 class HttpApplication
 {
     public function __construct(
-        private ApiController $apiController,
+        private ListInvestmentsController $listController,
+        private ShowInvestmentController $showController,
+        private CreateInvestmentController $createController,
+        private UpdateInvestmentController $updateController,
+        private DeleteInvestmentController $deleteController,
     ) {}
 
     public function handle(): void
@@ -18,21 +26,47 @@ class HttpApplication
         $params = $this->resolveParams($method);
 
         if ($path === '/api/calculate') {
+            $hasInvestmentParams = isset($params['investment_type'])
+                || isset($params['rate_type'])
+                || isset($params['capital'])
+                || isset($params['application_date'])
+                || isset($params['months']);
+
+            if ($method === 'GET' && !$hasInvestmentParams) {
+                if (isset($params['id'])) {
+                    $this->showController->execute($params);
+                    return;
+                }
+                $this->listController->execute($params);
+                return;
+            }
+
+            if ($method === 'PUT' && isset($params['id'])) {
+                $this->updateController->execute($params);
+                return;
+            }
+
+            if ($method === 'DELETE' && isset($params['id'])) {
+                $this->deleteController->execute($params);
+                return;
+            }
+
             if (!in_array($method, ['GET', 'POST'], true)) {
                 $this->methodNotAllowed('GET, POST');
                 return;
             }
-            $this->apiController->calculate($params);
+            $this->createController->execute($params);
             return;
         }
 
         if (preg_match('#^/api/calculate/([^/]+)$#', $path, $matches)) {
-            $id = urldecode($matches[1]);
+            $params['id'] = urldecode($matches[1]);
 
             match ($method) {
-                'PUT'    => $this->apiController->update($id, $params),
-                'DELETE' => $this->apiController->destroy($id),
-                default  => $this->methodNotAllowed('PUT, DELETE'),
+                'GET'    => $this->showController->execute($params),
+                'PUT'    => $this->updateController->execute($params),
+                'DELETE' => $this->deleteController->execute($params),
+                default  => $this->methodNotAllowed('GET, PUT, DELETE'),
             };
             return;
         }
@@ -42,10 +76,12 @@ class HttpApplication
         echo json_encode([
             'error'  => 'Rota não encontrada.',
             'routes' => [
-                'GET  /api/calculate'        => 'Calcula novo investimento via query string',
-                'POST /api/calculate'        => 'Calcula novo investimento via body (JSON ou form)',
-                'PUT  /api/calculate/{id}'   => 'Recalcula substituindo registro existente',
-                'DELETE /api/calculate/{id}' => 'Remove registro existente',
+                'GET    /api/calculate'           => 'Lista todos os investimentos cadastrados',
+                'GET    /api/calculate?params...' => 'Calcula novo investimento via query string',
+                'POST   /api/calculate'           => 'Calcula novo investimento via body (JSON ou form)',
+                'GET    /api/calculate/{id}'      => 'Busca investimento por ID',
+                'PUT    /api/calculate/{id}'      => 'Recalcula substituindo registro existente',
+                'DELETE /api/calculate/{id}'      => 'Remove registro existente',
             ],
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     }

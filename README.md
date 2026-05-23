@@ -59,10 +59,12 @@ php -S localhost:8000
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| `GET` | `/api/calculate?investment_type=cdb&rate_type=pos&capital=10000&cdi=110&application_date=2026-01-01&months=6` | Calcula investimento via query string |
-| `POST` | `/api/calculate` | Calcula investimento via body JSON |
-| `PUT` | `/api/calculate/{id}` | Recalcula substituindo registro |
-| `DELETE` | `/api/calculate/{id}` | Remove registro |
+| `GET` | `/api/calculate` | **Lista todos** os investimentos cadastrados |
+| `GET` | `/api/calculate?investment_type=cdb&rate_type=pos&capital=10000&cdi=110&application_date=2026-01-01&months=6` | **Cadastra** novo investimento via query string (retorna ID) |
+| `POST` | `/api/calculate` | **Cadastra** novo investimento via body JSON (retorna ID) |
+| `GET` | `/api/calculate/{id}` | **Busca** investimento por ID |
+| `PUT` | `/api/calculate/{id}` | **Atualiza/Recalcula** substituindo registro existente |
+| `DELETE` | `/api/calculate/{id}` | **Remove** registro por ID |
 
 **Exemplo POST:**
 
@@ -306,22 +308,35 @@ index.php --> bootstrap.php (Container + AppServiceProvider)
   v
 HttpApplication (roteamento)
   |
-  +--> GET|POST /api/calculate
-  |      +--> ApiController::calculate()
+  +--> GET /api/calculate (sem params de investimento)
+  |      +--> ListInvestmentsController::execute()
+  |             +--> ListInvestmentsUseCase
+  |             +--> JsonFileInvestmentRepository
+  |
+  +--> GET /api/calculate/{id}
+  |      +--> ShowInvestmentController::execute()
+  |             +--> ShowInvestmentUseCase
+  |             +--> JsonFileInvestmentRepository
+  |
+  +--> GET|POST /api/calculate (com params de investimento)
+  |      +--> CreateInvestmentController::execute()
   |             +--> HttpInputFactory::create()  (converte JSON em InvestmentInput)
   |             |      +--> CdiRateService::fetchCdiAnnual()
-  |             +--> CalculateInvestmentUseCase
-  |             +--> InMemoryInvestmentRepository
+  |             +--> CalculateInvestmentUseCase::execute() → retorna Investment
+  |             |      +--> InvestmentService::handle()
+  |             |             +--> (salva via JsonFileInvestmentRepository)
+  |             +--> CalculateInvestmentUseCase::getLastSavedId() → retorna o ID gerado
   |
   +--> PUT /api/calculate/{id}
-  |      +--> ApiController::update()
-  |             +--> HttpInputFactory::create()
-  |             +--> CalculateInvestmentUseCase
-  |             +--> InMemoryInvestmentRepository
+  |      +--> UpdateInvestmentController::execute()
+  |             +--> ShowInvestmentUseCase::execute() (busca existente)
+  |             +--> HttpInputFactory::inputToParams() + create() (merge de dados)
+  |             +--> CalculateInvestmentUseCase::recalculateAndUpdate() → recalcula + persiste
   |
   +--> DELETE /api/calculate/{id}
-         +--> ApiController::destroy()
-                +--> InMemoryInvestmentRepository
+         +--> DeleteInvestmentController::execute()
+                +--> DeleteInvestmentUseCase
+                +--> JsonFileInvestmentRepository
 ```
 
 ---
@@ -540,7 +555,7 @@ $$
 - **Matemática:** BC Math (`bcadd`, `bcsub`, `bcmul`, `bcdiv`, `bccomp`) + `pow()` para juros compostos
 - **Datas:** `DateTimeImmutable`, `DatePeriod`, `DateInterval`
 - **Arquitetura:** Container DI, camada de serviços, presenters, repositories
-- **Banco de dados:** Nenhum (repositório em memória)
+- **Persistência:** Arquivo JSON (`data/investments.json`) via `JsonFileInvestmentRepository` (persistente entre requisições)
 - **Modos de execução:** CLI interativo + API REST (auto-detectado via `PHP_SAPI`)
 
 ---
@@ -592,8 +607,9 @@ calculatorInvestment/
 ├── bootstrap.php                          # Autoload, Container, AppServiceProvider
 ├── index.php                              # Entry point (CLI + HTTP)
 ├── composer.json
-├── htaccess                               # Apache rewrite rules (PHP built-in server)
-├──                      # Exemplo de configuracao Nginx
+├── htaccess                               # Apache rewrite rules
+├── data/
+│   └── investments.json                   # Armazena investimentos (persistente)
 │
 ├── App/
 │   ├── Application/
@@ -612,8 +628,13 @@ calculatorInvestment/
 │   ├── Controllers/
 │   │   ├── CliController.php              # Controller CLI
 │   │   ├── CalculateController.php        # Logica de calculo (CLI)
-│   │   ├── ApiController.php              # Controller da API REST
-│   │   └── InvestmentResultController.php # Exibicao de resultado (CLI)
+│   │   ├── InvestmentResultController.php # Exibicao de resultado (CLI)
+│   │   ├── BaseApiController.php          # Controller base (JSON response, buildPayload)
+│   │   ├── CreateInvestmentController.php # Cria investimento
+│   │   ├── ListInvestmentsController.php  # Lista todos
+│   │   ├── ShowInvestmentController.php   # Busca por ID
+│   │   ├── UpdateInvestmentController.php # Atualiza por ID
+│   │   └── DeleteInvestmentController.php # Deleta por ID
 │   ├── Core/
 │   │   ├── Container.php                  # Container de injecao de dependencia
 │   │   └── AppServiceProvider.php         # Registro de todos os servicos
@@ -628,7 +649,8 @@ calculatorInvestment/
 │   │   ├── AbstractInvestmentPresenter.php
 │   │   └── InvestmentPresenter.php
 │   ├── Repositories/
-│   │   └── InMemoryInvestmentRepository.php
+│   │   ├── InMemoryInvestmentRepository.php  # Em memoria (para testes)
+│   │   └── JsonFileInvestmentRepository.php  # Persistente em arquivo JSON (padrao)
 │   ├── Services/
 │   │   ├── ServiceBase.php                # Constantes: escala, precisao, tabela IOF, feriados
 │   │   ├── AmountFormatterService.php     # Formatacao de valores monetarios
@@ -642,7 +664,10 @@ calculatorInvestment/
 │   │   ├── RateCalculationService.php    # Operacoes matematicas de taxas
 │   │   └── TaxCalculationService.php     # Calculo de IR e IOF
 │   ├── UseCases/
-│   │   └── CalculateInvestmentUseCase.php
+│   │   ├── CalculateInvestmentUseCase.php
+│   │   ├── ListInvestmentsUseCase.php
+│   │   ├── ShowInvestmentUseCase.php
+│   │   └── DeleteInvestmentUseCase.php
 │   └── ValueObjects/
 │       ├── InvestmentInput.php           # Dados de entrada do investimento
 │       └── Investment.php                # Resultado do investimento
@@ -683,7 +708,11 @@ Container de injeção de dependência (singleton).
 Provedor que registra todos os serviços no Container.
 
 #### `register(Container $container): void`
-- **Descrição:** Registra todos os serviços do sistema como singletons: `AmountFormatterService`, `BusinessDayService`, `CdiRateService`, `InvestmentInputFactory`, `InvestmentCalculation`, `RateCalculationService`, `TaxCalculationService`, `ProfitCalculationService`, `InvestmentService`, `CalculateInvestmentUseCase`, `DailyReportService`, `CalculateController`, `InvestmentPresenter`, `InvestmentResultController`, `HttpInputFactory`, `ApiController`, `HttpApplication`, `CliApplication`, `CliController`.
+- **Descrição:** Registra todos os serviços do sistema como singletons. Principais bindings:
+  - Repositório padrão: `JsonFileInvestmentRepository` (persistente)
+  - Use Cases: `CalculateInvestmentUseCase`, `ListInvestmentsUseCase`, `ShowInvestmentUseCase`, `DeleteInvestmentUseCase`
+  - Controllers API: `CreateInvestmentController`, `ListInvestmentsController`, `ShowInvestmentController`, `UpdateInvestmentController`, `DeleteInvestmentController`
+  - Services: `AmountFormatterService`, `BusinessDayService`, `CdiRateService`, `InvestmentService`, etc.
 - **Parâmetros:**
   - `$container` (`Container`) — Instância do Container de DI.
 - **Retorno:** `void`
@@ -1135,16 +1164,21 @@ Serviço central que orquestra todo o cálculo do investimento.
 
 #### `__construct(CalculatesRateInterface, CalculatesTaxInterface, CalculatesProfitInterface, CountsBusinessDaysInterface, FormatsAmountInterface, InvestmentCalculation, InvestmentRepositoryInterface)`
 
-#### `calculate(InvestmentInput $input): Investment`
-- **Descrição:** Ponto de entrada principal. Delega para `handle()`.
-- **Parâmetros:**
-  - `$input` (`InvestmentInput`) — Dados de entrada do investimento.
-- **Retorno:** `Investment`
-
 #### `handle(InvestmentInput $input): Investment`
-- **Descrição:** Executa `process()` e salva o resultado no repositório.
+- **Descrição:** Executa `process()` e salva o resultado no repositório. O ID gerado é armazenado internamente e acessível via `getLastSavedId()`.
 - **Parâmetros:**
   - `$input` (`InvestmentInput`) — Dados de entrada.
+- **Retorno:** `Investment`
+
+#### `getLastSavedId(): ?int`
+- **Descrição:** Retorna o ID do último investimento salvo via `handle()`.
+- **Retorno:** `?int`
+
+#### `recalculateAndUpdate(int|string $id, InvestmentInput $input): Investment`
+- **Descrição:** Recalcula o investimento (`process()`) e persiste a atualização no repositório. Usado pelo fluxo de update.
+- **Parâmetros:**
+  - `$id` (`int|string`) — ID do investimento a atualizar.
+  - `$input` (`InvestmentInput`) — Dados de entrada atualizados.
 - **Retorno:** `Investment`
 
 #### `process(InvestmentInput $input): Investment`
@@ -1476,8 +1510,25 @@ Orquestrador principal da aplicação CLI.
 ### App\UseCases\CalculateInvestmentUseCase
 
 #### `execute(InvestmentInput $input): Investment`
-- **Descrição:** Executa o caso de uso de cálculo de investimento delegando ao `InvestmentService::handle()`.
+- **Descrição:** Executa o caso de uso de cálculo de investimento delegando ao `InvestmentService::handle()`. Calcula e persiste no repositório.
 - **Parâmetros:**
+  - `$input` (`InvestmentInput`) — Dados de entrada.
+- **Retorno:** `Investment`
+
+#### `getLastSavedId(): ?int`
+- **Descrição:** Retorna o ID gerado pelo repositório na última execução de `execute()`.
+- **Retorno:** `?int`
+
+#### `recalculate(InvestmentInput $input): Investment`
+- **Descrição:** Recalcula o investimento sem persistir (usa `InvestmentService::recalculate()`).
+- **Parâmetros:**
+  - `$input` (`InvestmentInput`) — Dados de entrada.
+- **Retorno:** `Investment`
+
+#### `recalculateAndUpdate(int|string $id, InvestmentInput $input): Investment`
+- **Descrição:** Recalcula e persiste a atualização no repositório. Usado pelo fluxo de update.
+- **Parâmetros:**
+  - `$id` (`int|string`) — ID do investimento a atualizar.
   - `$input` (`InvestmentInput`) — Dados de entrada.
 - **Retorno:** `Investment`
 
@@ -1485,108 +1536,66 @@ Orquestrador principal da aplicação CLI.
 
 ### App\Repositories\InMemoryInvestmentRepository
 
-#### `save(InvestmentInput $input, Investment $result): Investment`
-- **Descrição:** Armazena o resultado do investimento em memória.
-- **Parâmetros:**
-  - `$input` (`InvestmentInput`) — Dados de entrada.
-  - `$result` (`Investment`) — Resultado.
-- **Retorno:** `Investment`
+Repositório em memória (útil para testes). Implementa `InvestmentRepositoryInterface`.
+
+#### `save(InvestmentInput $input, Investment $result): int`
+- **Descrição:** Armazena o resultado do investimento em memória com ID auto-incremental.
+- **Retorno:** `int` — O ID gerado.
 
 #### `all(): array`
 - **Descrição:** Retorna todos os resultados armazenados.
-- **Parâmetros:** Nenhum.
 - **Retorno:** `array`
 
----
+#### `getLast(): ?array`
+- **Descrição:** Retorna o último investimento armazenado.
+- **Retorno:** `?array`
 
-### App\ValueObjects\InvestmentInput
+#### `findById(int|string $id): ?array`
+- **Descrição:** Busca investimento por ID.
+- **Retorno:** `?array`
 
-Value Object imutável com dados de entrada do investimento.
+#### `update(int|string $id, InvestmentInput $input, Investment $result): int`
+- **Descrição:** Atualiza investimento existente por ID.
+- **Retorno:** `int` — O ID do investimento atualizado.
 
-**Propriedades (públicas, readonly):**
-
-| Propriedade | Tipo | Descrição |
-|-------------|------|-----------|
-| `$initialCapital` | `string` | Capital inicial investido (ex: `"10000.00"`) |
-| `$investmentType` | `string` | Tipo: `"cdb"`, `"lci"` ou `"lca"` |
-| `$rateType` | `string` | Tipo de taxa: `"pre"` ou `"pos"` |
-| `$cdiPercentage` | `string` | Percentual do CDI contratado (ex: `"110"`) |
-| `$selicMeta` | `string` | Taxa Selic Meta anual (ex: `"14.40"`) |
-| `$preFixedAnnualRate` | `string` | Taxa anual pré-fixada (ex: `"11.50"`) |
-| `$applicationDate` | `string` | Data de aplicação (`Y-m-d`) |
-| `$redemptionDate` | `string` | Data de resgate (`Y-m-d`) |
-| `$months` | `int` | Prazo em meses |
-| `$selicIsOver` | `bool` | Se a Selic fornecida já é "Over" |
-| `$cdiOver` | `string` | Taxa CDI Over fornecida manualmente (vazio = buscar da API do BCB) |
-
-**Propriedade computada:**
-
-| Propriedade | Tipo | Descrição |
-|-------------|------|-----------|
-| `$isIsento` | `bool` | `true` se `investmentType` for `lci` ou `lca` (isentos de IR); `false` para `cdb` |
+#### `delete(int|string $id): bool`
+- **Descrição:** Remove investimento por ID.
+- **Retorno:** `bool` — `true` se removido.
 
 ---
 
-### App\ValueObjects\Investment
+### App\Repositories\JsonFileInvestmentRepository
 
-Value Object imutável com o resultado completo do investimento.
+Repositório persistente em arquivo JSON (`data/investments.json`). É o repositório padrão da aplicação. Implementa `InvestmentRepositoryInterface`.
 
-**Propriedades (públicas, readonly):**
-
-| Propriedade | Tipo | Descrição |
-|-------------|------|-----------|
-| `$amountBruto` | `string` | Montante bruto final |
-| `$amountLiquid` | `string` | Montante líquido final (após IR/IOF) |
-| `$profitBruto` | `string` | Lucro bruto |
-| `$profitLiquid` | `string` | Lucro líquido (após IR/IOF) |
-| `$iofValue` | `string` | IOF pago |
-| `$irTaxAmount` | `string` | IR pago |
-| `$monthlyProfitLiquid` | `string` | Lucro líquido mensal |
-| `$dailyProfitDisplay` | `string` | Lucro líquido diário (para exibição) |
-| `$isIsento` | `bool` | Se o investimento é isento de IR |
-| `$days` | `int` | Dias corridos |
-| `$businessDays` | `int` | Dias úteis |
-
----
-
-### App\Application\HttpApplication
-
-Roteador da API REST. Detecta método HTTP e path, direciona para o `ApiController`.
-
-#### `handle(): void`
-- **Descrição:** Lê `REQUEST_METHOD` e `REQUEST_URI`, faz o roteamento:
-  - `GET|POST /api/calculate` → `ApiController::calculate()`
-  - `PUT /api/calculate/{id}` → `ApiController::update()`
-  - `DELETE /api/calculate/{id}` → `ApiController::destroy()`
-  - Outras rotas → `404` com lista de rotas disponíveis.
-
-#### `resolveParams(string $method): array`
-- **Descrição:** Extrai parâmetros da requisição. Para `GET`, lê `$_GET`. Para `POST`/`PUT`, lê `php://input` como JSON (se `Content-Type: application/json`) ou `$_POST` (form-urlencoded).
+#### `__construct(?string $filePath = null)`
+- **Descrição:** Carrega dados do arquivo JSON. Se não existir, cria estrutura vazia.
 - **Parâmetros:**
-  - `$method` (`string`) — Método HTTP.
-- **Retorno:** `array` — Parâmetros mesclados.
+  - `$filePath` (`?string`) — Caminho customizado (padrão: `data/investments.json`).
 
----
+#### `save(InvestmentInput $input, Investment $result): int`
+- **Descrição:** Salva novo investimento com ID auto-incremental e persiste no arquivo.
+- **Retorno:** `int` — O ID gerado.
 
-### App\Controllers\ApiController
+#### `all(): array`
+- **Descrição:** Retorna todos os investimentos com objetos `InvestmentInput` e `Investment` reconstruídos.
+- **Retorno:** `array`
 
-Controller da API REST com respostas JSON.
+#### `getLast(): ?array`
+- **Descrição:** Retorna o último investimento.
+- **Retorno:** `?array`
 
-#### `calculate(array $params): void`
-- **Descrição:** Cria `InvestmentInput` via `HttpInputFactory`, executa o cálculo, persiste no repositório e retorna `201` com o payload completo.
-- **Parâmetros:**
-  - `$params` (`array`) — Parâmetros da requisição.
+#### `findById(int|string $id): ?array`
+- **Descrição:** Busca por ID.
+- **Retorno:** `?array`
 
-#### `update(string $id, array $params): void`
-- **Descrição:** Busca registro por `id`, mescla parâmetros novos, recalcula e substitui o registro. Retorna `200` com `id` e `replaced_id`.
-- **Parâmetros:**
-  - `$id` (`string`) — ID do registro.
-  - `$params` (`array`) — Novos parâmetros.
+#### `update(int|string $id, InvestmentInput $input, Investment $result): int`
+- **Descrição:** Atualiza e persiste no arquivo.
+- **Retorno:** `int` — O ID do investimento atualizado.
 
-#### `destroy(string $id): void`
-- **Descrição:** Remove registro do repositório. Retorna `200` se removido, `404` se não encontrado.
-- **Parâmetros:**
-  - `$id` (`string`) — ID do registro.
+#### `delete(int|string $id): bool`
+- **Descrição:** Remove e persiste no arquivo.
+- **Retorno:** `bool`
 
 ---
 
@@ -1601,5 +1610,11 @@ Factory que cria `InvestmentInput` a partir de parâmetros de requisição HTTP 
 - **Parâmetros:**
   - `$params` (`array`) — Parâmetros da requisição.
 - **Retorno:** `InvestmentInput`
+
+#### `inputToParams(InvestmentInput $input): array`
+- **Descrição:** Converte um `InvestmentInput` de volta para array de parâmetros (útil para mesclar em updates).
+- **Parâmetros:**
+  - `$input` (`InvestmentInput`) — Objeto a converter.
+- **Retorno:** `array` — Parâmetros no formato de requisição.
 
 ---

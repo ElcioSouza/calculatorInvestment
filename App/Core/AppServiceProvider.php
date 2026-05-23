@@ -3,10 +3,14 @@ namespace App\Core;
 
 use App\Application\CliApplication;
 use App\Application\HttpApplication;
-use App\Controllers\ApiController;
-use App\Controllers\CalculateController; // mudou
+use App\Controllers\CalculateController;
 use App\Controllers\CliController;
-use App\Controllers\InvestmentResultController; // mudou
+use App\Controllers\CreateInvestmentController;
+use App\Controllers\DeleteInvestmentController;
+use App\Controllers\InvestmentResultController;
+use App\Controllers\ListInvestmentsController;
+use App\Controllers\ShowInvestmentController;
+use App\Controllers\UpdateInvestmentController;
 use App\Factories\HttpInputFactory;
 use App\Factories\InvestmentInputFactory;
 use App\Helpers\DefaultInvestmentCalculationHelper as DefaultInvestmentCalculation;
@@ -22,11 +26,20 @@ use App\Services\ProfitCalculationService;
 use App\Services\RateCalculationService;
 use App\Services\TaxCalculationService;
 use App\UseCases\CalculateInvestmentUseCase;
+use App\UseCases\DeleteInvestmentUseCase;
+use App\UseCases\ListInvestmentsUseCase;
+use App\UseCases\ShowInvestmentUseCase;
 
 class AppServiceProvider
 {
     public function register(Container $container): void
     {
+        $container->bind(
+            \App\Contracts\InvestmentRepositoryInterface::class,
+            fn() => new \App\Repositories\JsonFileInvestmentRepository(),
+            true
+        );
+
         $container->bind(AmountFormatterService::class, fn() => new AmountFormatterService(), true);
         $container->bind(BusinessDayService::class, fn() => new BusinessDayService(), true);
         $container->bind(CdiRateService::class, fn() => new CdiRateService(), true);
@@ -55,7 +68,7 @@ class AppServiceProvider
                 businessDayService: $c->getInstancia(BusinessDayService::class),
                 formatter: $c->getInstancia(AmountFormatterService::class),
                 calculationInvestment: $c->getInstancia(InvestmentCalculation::class),
-                repository: new InMemoryInvestmentRepository(),
+                repository: $c->getInstancia(\App\Contracts\InvestmentRepositoryInterface::class),
             ),
             true
         );
@@ -97,6 +110,34 @@ class AppServiceProvider
             true
         );
 
+        // --- Use Cases ---
+
+        $container->bind(
+            ListInvestmentsUseCase::class,
+            fn($c) => new ListInvestmentsUseCase(
+                $c->getInstancia(\App\Contracts\InvestmentRepositoryInterface::class)
+            ),
+            true
+        );
+
+        $container->bind(
+            ShowInvestmentUseCase::class,
+            fn($c) => new ShowInvestmentUseCase(
+                $c->getInstancia(\App\Contracts\InvestmentRepositoryInterface::class)
+            ),
+            true
+        );
+
+        $container->bind(
+            DeleteInvestmentUseCase::class,
+            fn($c) => new DeleteInvestmentUseCase(
+                $c->getInstancia(\App\Contracts\InvestmentRepositoryInterface::class)
+            ),
+            true
+        );
+
+        // --- CLI Controllers ---
+
         $container->bind(CalculateController::class, fn($c) => new CalculateController(
             $c->getInstancia(InvestmentInputFactory::class),
             $c->getInstancia(CalculateInvestmentUseCase::class)
@@ -108,18 +149,47 @@ class AppServiceProvider
             $c->getInstancia(InvestmentPresenter::class)
         ), true);
 
+        // --- HTTP Controllers ---
+
         $container->bind(
-            \App\Contracts\InvestmentRepositoryInterface::class,
-            fn() => new \App\Repositories\InMemoryInvestmentRepository(),
+            ListInvestmentsController::class,
+            fn($c) => new ListInvestmentsController(
+                $c->getInstancia(ListInvestmentsUseCase::class),
+            ),
             true
         );
 
         $container->bind(
-            ApiController::class,
-            fn($c) => new ApiController(
+            ShowInvestmentController::class,
+            fn($c) => new ShowInvestmentController(
+                $c->getInstancia(ShowInvestmentUseCase::class),
+            ),
+            true
+        );
+
+        $container->bind(
+            CreateInvestmentController::class,
+            fn($c) => new CreateInvestmentController(
                 $c->getInstancia(HttpInputFactory::class),
                 $c->getInstancia(CalculateInvestmentUseCase::class),
-                $c->getInstancia(\App\Contracts\InvestmentRepositoryInterface::class),
+            ),
+            true
+        );
+
+        $container->bind(
+            UpdateInvestmentController::class,
+            fn($c) => new UpdateInvestmentController(
+                $c->getInstancia(HttpInputFactory::class),
+                $c->getInstancia(CalculateInvestmentUseCase::class),
+                $c->getInstancia(ShowInvestmentUseCase::class),
+            ),
+            true
+        );
+
+        $container->bind(
+            DeleteInvestmentController::class,
+            fn($c) => new DeleteInvestmentController(
+                $c->getInstancia(DeleteInvestmentUseCase::class),
             ),
             true
         );
@@ -137,7 +207,11 @@ class AppServiceProvider
         $container->bind(
             HttpApplication::class,
             fn($c) => new HttpApplication(
-                $c->getInstancia(ApiController::class),
+                $c->getInstancia(ListInvestmentsController::class),
+                $c->getInstancia(ShowInvestmentController::class),
+                $c->getInstancia(CreateInvestmentController::class),
+                $c->getInstancia(UpdateInvestmentController::class),
+                $c->getInstancia(DeleteInvestmentController::class),
             ),
             true
         );

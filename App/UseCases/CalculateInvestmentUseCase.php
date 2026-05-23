@@ -12,6 +12,21 @@ class CalculateInvestmentUseCase
 
     public function execute(InvestmentInput $input): Investment
     {
-      return $this->service->handle($input);
+        return $this->service->handle($input);
+    }
+
+    public function recalculate(InvestmentInput $input): Investment
+    {
+        return $this->service->recalculate($input);
+    }
+
+    public function recalculateAndUpdate(int|string $id, InvestmentInput $input): Investment
+    {
+        return $this->service->recalculateAndUpdate($id, $input);
+    }
+
+    public function getLastSavedId(): ?int
+    {
+        return $this->service->getLastSavedId();
     }
 }

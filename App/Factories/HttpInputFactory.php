@@ -90,6 +90,21 @@ final class HttpInputFactory extends BaseFactory
         };
     }
 
+    public function inputToParams(\App\ValueObjects\InvestmentInput $input): array
+    {
+        return [
+            'investment_type'  => $input->investmentType,
+            'rate_type'        => $input->rateType,
+            'application_date' => $input->applicationDate,
+            'months'           => (string) $input->months,
+            'capital'          => $input->initialCapital,
+            'cdi'              => $input->cdiPercentage,
+            'selic_meta'       => $input->selicMeta,
+            'pre_rate'         => $input->preFixedAnnualRate,
+            'cdi_annual'       => $input->cdiOver,
+        ];
+    }
+
     private function normalizeInvestmentType(string $value): string
     {
         $value = strtolower(trim($value));

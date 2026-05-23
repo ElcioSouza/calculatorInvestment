@@ -24,17 +24,32 @@ class InvestmentService extends ServiceBase
         private InvestmentRepositoryInterface $repository,
     ) {}
 
-    public function calculate(InvestmentInput $input): Investment
-    {
-        return $this->handle($input);
-    }
+    private ?int $lastSavedId = null;
 
     public function handle(InvestmentInput $input): Investment
     {
-
         $result = $this->process($input);
 
-        return $this->repository->save($input, $result);
+        $this->lastSavedId = $this->repository->save($input, $result);
+
+        return $result;
+    }
+
+    public function getLastSavedId(): ?int
+    {
+        return $this->lastSavedId;
+    }
+
+    public function recalculateAndUpdate(int|string $id, InvestmentInput $input): Investment
+    {
+        $result = $this->recalculate($input);
+        $this->repository->update($id, $input, $result);
+        return $result;
+    }
+
+    public function recalculate(InvestmentInput $input): Investment
+    {
+        return $this->process($input);
     }
 
     private function process(InvestmentInput $input): Investment
