@@ -608,8 +608,6 @@ calculatorInvestment/
 ├── index.php                              # Entry point (CLI + HTTP)
 ├── composer.json
 ├── htaccess                               # Apache rewrite rules
-├── data/
-│   └── investments.json                   # Armazena investimentos (persistente)
 │
 ├── App/
 │   ├── Application/
