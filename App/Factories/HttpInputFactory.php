@@ -22,6 +22,7 @@ final class HttpInputFactory extends BaseFactory
 
         $applicationDateRaw = $this->getParam($params, 'application_date', $defaultDate);
         $applicationDate    = $this->normalizeDateOrFail(trim($applicationDateRaw));
+        $this->ensureIsBusinessDay($applicationDate);
 
         $monthsRaw = $this->getParam($params, 'months', '1');
         $months    = $this->normalizePositiveIntegerOrFail(trim($monthsRaw), 'Prazo de investimento');

@@ -41,7 +41,7 @@ class DailyReportService
 
         for ($day = $applicationDate, $displayDay = 0; $day <= $periodEndDate; $day = $day->modify('+1 day'), $displayDay++) {
                 
-                $businessDayEnd = $day > $applicationDate ? $day->modify('-1 day')->format('Y-m-d') : $applicationDate->format('Y-m-d');
+                $businessDayEnd = $day > $applicationDate ? $day->format('Y-m-d') : $applicationDate->format('Y-m-d');
             $currentBusinessDays = $this->businessDayService->countBusinessDays(
                 $input->applicationDate,
                 $businessDayEnd

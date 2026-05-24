@@ -32,9 +32,21 @@ final class InvestmentInputFactory extends BaseFactory
             : ConsoleInput::normalizeRateType(ConsoleInput::askOption("Taxa [1=pré 2=pós] (padrão: 2): ", ['1', '2'], '2'));
 
         $applicationDate = ConsoleInput::option($argv, 'application-date', '');
-        $applicationDate = $applicationDate !== ''
-            ? $this->normalizeDateOrFail(trim($applicationDate))
-            : $this->askValidDate("Data de aplicação [{$defaultDate}]: ", $defaultDate);
+        if ($applicationDate !== '') {
+            $applicationDate = $this->normalizeDateOrFail(trim($applicationDate));
+            try {
+                $this->ensureIsBusinessDay($applicationDate);
+            } catch (\InvalidArgumentException $e) {
+                if (ConsoleInput::isInteractive()) {
+                    echo $e->getMessage() . "\n";
+                    $applicationDate = $this->askValidBusinessDay("Data de aplicação [{$defaultDate}]: ", $defaultDate);
+                } else {
+                    throw $e;
+                }
+            }
+        } else {
+            $applicationDate = $this->askValidBusinessDay("Data de aplicação [{$defaultDate}]: ", $defaultDate);
+        }
 
         $months = ConsoleInput::option($argv, 'months', '');
         $months = $months !== ''

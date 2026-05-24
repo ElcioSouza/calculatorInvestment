@@ -16,7 +16,7 @@ use App\Factories\InvestmentInputFactory;
 use App\Helpers\DefaultInvestmentCalculationHelper as DefaultInvestmentCalculation;
 use App\Helpers\InvestmentCalculationHelper as InvestmentCalculation;
 use App\Presenters\InvestmentPresenter;
-use App\Repositories\InMemoryInvestmentRepository;
+
 use App\Services\AmountFormatterService;
 use App\Services\BusinessDayService;
 use App\Services\CdiRateService;
@@ -53,8 +53,7 @@ class AppServiceProvider
         $container->bind(
             ProfitCalculationService::class,
             fn($c) => new ProfitCalculationService(
-                $c->getInstancia(TaxCalculationService::class),
-                $c->getInstancia(AmountFormatterService::class)
+                $c->getInstancia(TaxCalculationService::class)
             ),
             true
         );

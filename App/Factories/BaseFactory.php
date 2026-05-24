@@ -34,6 +34,19 @@ abstract class BaseFactory
         }
     }
 
+    protected function askValidBusinessDay(string $message, string $default): string
+    {
+        while (true) {
+            $date = $this->askValidDate($message, $default);
+            try {
+                $this->ensureIsBusinessDay($date);
+                return $date;
+            } catch (\InvalidArgumentException $e) {
+                echo $e->getMessage() . "\n";
+            }
+        }
+    }
+
     protected function askPositiveNumber(string $message, string $default, string $label): string
     {
         while (true) {
@@ -88,6 +101,16 @@ abstract class BaseFactory
         }
 
         return $normalized;
+    }
+
+    protected function ensureIsBusinessDay(string $date, string $label = 'Data de aplicação'): void
+    {
+        $dt = new \DateTimeImmutable($date);
+        if ($this->isWeekendOrHoliday($dt)) {
+            throw new \InvalidArgumentException(
+                "{$label} deve ser um dia útil ({$dt->format('d/m/Y')} caiu em {$dt->format('l')} ou é feriado)."
+            );
+        }
     }
 
     protected function calculateRedemptionDateByMonths(string $applicationDate, int $months): string

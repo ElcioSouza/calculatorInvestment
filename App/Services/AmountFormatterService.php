@@ -14,7 +14,7 @@ class AmountFormatterService extends ServiceBase implements FormatsAmountInterfa
 
     public function normalizeAmountRounded(string $amount): string
     {
-        return sprintf('%.' . $this->precision . 'F', round((float) $amount, 2));
+        return $this->normalizeAmount($amount);
     }
 
     public function normalizeAmountTruncated(string $amount): string
