@@ -2,12 +2,15 @@
 namespace App\Factories;
 
 use App\Services\CdiRateService;
+use App\Services\RateCalculationService;
 use App\ValueObjects\InvestmentInput;
 
 final class HttpInputFactory extends BaseFactory
 {
-    public function __construct(private readonly CdiRateService $cdiRateService)
-    {
+    public function __construct(
+        private readonly CdiRateService $cdiRateService,
+        private readonly RateCalculationService $rateCalculationService,
+    ) {
     }
 
     public function create(array $params): InvestmentInput
@@ -48,20 +51,14 @@ final class HttpInputFactory extends BaseFactory
         }
         
         $cdiOver   = '';
-        $cdiSource = '';
-        if ($rateType !== 'pre') {
-            $manualCdiAnnual = $this->getParam($params, 'cdi_annual', '');
-            if ($manualCdiAnnual !== '') {
-                $cdiOver   = $this->normalizePositiveNumberOrFail(trim($manualCdiAnnual), 'CDI anual manual');
-                $cdiSource = 'Manual';
-            } elseif (array_key_exists('selic_meta', $params)) {
-                $cdiOver   = $this->rateCalculationService->convertSelicMetaToOver($selicMeta);
-                $cdiSource = 'Manual (Selic Meta → Over)';
-            } else {
-                $cdiResult = $this->cdiRateService->fetchCdiAnnual($selicMeta);
-                $cdiOver   = $cdiResult['rate'];
-                $cdiSource = $cdiResult['source'];
-            }
+        $manualCdiAnnual = $this->getParam($params, 'cdi_annual', '');
+        if ($manualCdiAnnual !== '') {
+            $cdiOver = $this->normalizePositiveNumberOrFail(trim($manualCdiAnnual), 'CDI anual manual');
+        } elseif (array_key_exists('selic_meta', $params)) {
+            $cdiOver = $this->rateCalculationService->convertSelicMetaToOver($selicMeta);
+        } else {
+            $cdiResult = $this->cdiRateService->fetchCdiAnnual($selicMeta);
+            $cdiOver   = $cdiResult['rate'];
         }
 
         return new InvestmentInput(

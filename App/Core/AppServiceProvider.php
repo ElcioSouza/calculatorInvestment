@@ -101,7 +101,8 @@ class AppServiceProvider
         $container->bind(
             HttpInputFactory::class,
             fn($c) => new HttpInputFactory(
-                $c->getInstancia(CdiRateService::class)
+                $c->getInstancia(CdiRateService::class),
+                $c->getInstancia(RateCalculationService::class)
             ),
             true
         );
