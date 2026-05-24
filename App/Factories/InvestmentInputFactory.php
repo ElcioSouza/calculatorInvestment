@@ -11,9 +11,10 @@ final class InvestmentInputFactory extends BaseFactory
     {
     }
 
-    public function create(array $argv): InvestmentInput
+    public function create(array $argv, ?string $defaultSelic = null): InvestmentInput
     {
         $defaultDate = (new \DateTime())->format('Y-m-d');
+        $defaultSelic ??= $this->cdiRateService->fetchSelicAnnual('14.40');
 
         $investmentType = ConsoleInput::option($argv, 'investment-type', '');
         $investmentType = $investmentType !== ''
@@ -61,7 +62,7 @@ final class InvestmentInputFactory extends BaseFactory
             : $this->askPositiveNumber("Capital inicial [10000]: ", '10000', 'Capital inicial');
 
         $cdiPercentage      = ConsoleInput::option($argv, 'cdi', '100');
-        $selicMeta          = ConsoleInput::option($argv, 'selic-meta', '14.40');
+        $selicMeta          = ConsoleInput::option($argv, 'selic-meta', $defaultSelic);
         $preFixedAnnualRate = ConsoleInput::option($argv, 'pre-rate', '11.50');
 
         if ($rateType === 'pre') {
@@ -78,7 +79,7 @@ final class InvestmentInputFactory extends BaseFactory
             $selicMeta = ConsoleInput::option($argv, 'selic-meta', '');
             $selicMeta = $selicMeta !== ''
                 ? $this->normalizePositiveNumberOrFail(trim($selicMeta), 'Selic Meta')
-                : $this->askPositiveNumber("Selic Meta [14.40]: ", '14.40', 'Selic Meta');
+                : $this->askPositiveNumber("Selic Meta [{$defaultSelic}]: ", $defaultSelic, 'Selic Meta');
         }
 
         $cdiOver   = '';
@@ -86,9 +87,11 @@ final class InvestmentInputFactory extends BaseFactory
         if ($rateType !== 'pre') {
             $manualCdiAnnual = ConsoleInput::option($argv, 'cdi-annual', '');
             if ($manualCdiAnnual !== '') {
-                $cdiOver = $this->normalizePositiveNumberOrFail(trim($manualCdiAnnual), 'CDI anual manual');
+                $cdiOver   = $this->normalizePositiveNumberOrFail(trim($manualCdiAnnual), 'CDI anual manual');
                 $cdiSource = 'Manual';
-               
+            } elseif ($selicMeta !== $defaultSelic) {
+                $cdiOver   = $selicMeta;
+                $cdiSource = 'Manual (Selic Meta)';
             } else {
                 $cdiResult  = $this->cdiRateService->fetchCdiAnnual($selicMeta);
                 $cdiOver    = $cdiResult['rate'];

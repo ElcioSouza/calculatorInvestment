@@ -43,9 +43,6 @@ class AppServiceProvider
         $container->bind(AmountFormatterService::class, fn() => new AmountFormatterService(), true);
         $container->bind(BusinessDayService::class, fn() => new BusinessDayService(), true);
         $container->bind(CdiRateService::class, fn() => new CdiRateService(), true);
-        $container->bind(InvestmentInputFactory::class, fn($c) => new InvestmentInputFactory(
-            $c->getInstancia(CdiRateService::class)
-        ), true);
         $container->bind(InvestmentCalculation::class, fn() => new DefaultInvestmentCalculation(), true);
         $container->bind(RateCalculationService::class, fn() => new RateCalculationService(), true);
         $container->bind(TaxCalculationService::class, fn() => new TaxCalculationService(), true);
@@ -139,7 +136,8 @@ class AppServiceProvider
 
         $container->bind(CalculateController::class, fn($c) => new CalculateController(
             $c->getInstancia(InvestmentInputFactory::class),
-            $c->getInstancia(CalculateInvestmentUseCase::class)
+            $c->getInstancia(CalculateInvestmentUseCase::class),
+            $c->getInstancia(CdiRateService::class),
         ), true);
 
         $container->bind(InvestmentPresenter::class, fn() => new InvestmentPresenter(), true);

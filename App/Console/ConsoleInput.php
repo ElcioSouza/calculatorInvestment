@@ -81,7 +81,7 @@ final class ConsoleInput
         };
     }
 
-    public static function showInvestmentDefaults(): void
+    public static function showInvestmentDefaults(string $selicDefault = '14.40'): void
     {
         if (self::isInteractive()) {
             $defaultDate = (new \DateTime())->format('Y-m-d');
@@ -93,7 +93,7 @@ final class ConsoleInput
             echo "Prazo de investimento (meses de calendário) [1]\n";
             echo "Capital inicial [10000]\n";
             echo "Rentabilidade (% do CDI) [100]\n";
-            echo "Selic Meta [14.40]\n\n";
+            echo "Selic Meta [{$selicDefault}]\n\n";
         }
     }
 }

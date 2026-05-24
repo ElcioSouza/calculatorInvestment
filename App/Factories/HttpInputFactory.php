@@ -13,6 +13,7 @@ final class HttpInputFactory extends BaseFactory
     public function create(array $params): InvestmentInput
     {
         $defaultDate = (new \DateTime())->format('Y-m-d');
+        $defaultSelic = $this->cdiRateService->fetchSelicAnnual('14.40');
 
         $investmentType = $this->getParam($params, 'investment_type', 'cdb');
         $investmentType = $this->normalizeInvestmentType($investmentType);
@@ -33,7 +34,7 @@ final class HttpInputFactory extends BaseFactory
         $initialCapital = $this->normalizePositiveNumberOrFail(trim($capitalRaw), 'Capital inicial');
 
         $cdiPercentage      = '100';
-        $selicMeta          = '14.40';
+        $selicMeta          = $defaultSelic;
         $preFixedAnnualRate = '11.50';
 
         if ($rateType === 'pre') {
@@ -41,7 +42,7 @@ final class HttpInputFactory extends BaseFactory
             $preFixedAnnualRate = $this->normalizePositiveNumberOrFail(trim($preRateRaw), 'Taxa prefixada anual');
         } else {
             $cdiRaw        = $this->getParam($params, 'cdi', '100');
-            $selicRaw      = $this->getParam($params, 'selic_meta', '14.40');
+            $selicRaw      = $this->getParam($params, 'selic_meta', $defaultSelic);
             $cdiPercentage = $this->normalizePositiveNumberOrFail(trim($cdiRaw), 'Rentabilidade (% do CDI)');
             $selicMeta     = $this->normalizePositiveNumberOrFail(trim($selicRaw), 'Selic Meta');
         }
@@ -53,6 +54,9 @@ final class HttpInputFactory extends BaseFactory
             if ($manualCdiAnnual !== '') {
                 $cdiOver   = $this->normalizePositiveNumberOrFail(trim($manualCdiAnnual), 'CDI anual manual');
                 $cdiSource = 'Manual';
+            } elseif (array_key_exists('selic_meta', $params)) {
+                $cdiOver   = $this->rateCalculationService->convertSelicMetaToOver($selicMeta);
+                $cdiSource = 'Manual (Selic Meta → Over)';
             } else {
                 $cdiResult = $this->cdiRateService->fetchCdiAnnual($selicMeta);
                 $cdiOver   = $cdiResult['rate'];

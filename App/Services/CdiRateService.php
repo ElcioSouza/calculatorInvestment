@@ -11,6 +11,9 @@ class CdiRateService
     private const SGS_CDI_DAILY_URL =
         'https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados/ultimos/5?formato=json';
 
+    private const SGS_SELIC_DAILY_URL =
+        'https://api.bcb.gov.br/dados/serie/bcdata.sgs.11/dados/ultimos/5?formato=json';
+
     private CdiApiClient $apiClient;
     private CdiRateCalculator $calculator;
 
@@ -63,6 +66,19 @@ class CdiRateService
         }
 
         return $this->fallback($selicMetaFallback, $spreadFallback, 'API BC indisponível');
+    }
+
+    public function fetchSelicAnnual(?string $fallback = null): ?string
+    {
+        $result = $this->apiClient->fetchLatestRecord(self::SGS_SELIC_DAILY_URL);
+        if ($result !== null) {
+            ['valor' => $valorDiario] = $result;
+            if ($this->calculator->isDailyRateValid($valorDiario)) {
+                $annual = $this->calculator->annualizeDailyRate($valorDiario);
+                return number_format($annual, 8, '.', '');
+            }
+        }
+        return $fallback;
     }
 
     private function fallback(string $selicMeta, string $spread, string $reason): array
