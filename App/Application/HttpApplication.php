@@ -1,6 +1,7 @@
 <?php
 namespace App\Application;
 
+use App\Controllers\CalculateInvestmentEstimateController;
 use App\Controllers\CreateInvestmentController;
 use App\Controllers\DeleteInvestmentController;
 use App\Controllers\ListInvestmentsController;
@@ -15,6 +16,7 @@ class HttpApplication
         private CreateInvestmentController $createController,
         private UpdateInvestmentController $updateController,
         private DeleteInvestmentController $deleteController,
+        private CalculateInvestmentEstimateController $estimateController,
     ) {}
 
     public function handle(): void
@@ -31,6 +33,11 @@ class HttpApplication
                 || isset($params['capital'])
                 || isset($params['application_date'])
                 || isset($params['months']);
+
+            if ($method === 'GET' && $hasInvestmentParams) {
+                $this->estimateController->execute($params);
+                return;
+            }
 
             if ($method === 'GET' && !$hasInvestmentParams) {
                 if (isset($params['id'])) {
@@ -77,7 +84,7 @@ class HttpApplication
             'error'  => 'Rota não encontrada.',
             'routes' => [
                 'GET    /api/calculate'           => 'Lista todos os investimentos cadastrados',
-                'GET    /api/calculate?params...' => 'Calcula novo investimento via query string',
+                'GET    /api/calculate?params...' => 'Calcula investimento via query string (sem persistência)',
                 'POST   /api/calculate'           => 'Calcula novo investimento via body (JSON ou form)',
                 'GET    /api/calculate/{id}'      => 'Busca investimento por ID',
                 'PUT    /api/calculate/{id}'      => 'Recalcula substituindo registro existente',

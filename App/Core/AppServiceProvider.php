@@ -4,6 +4,7 @@ namespace App\Core;
 use App\Application\CliApplication;
 use App\Application\HttpApplication;
 use App\Controllers\CalculateController;
+use App\Controllers\CalculateInvestmentEstimateController;
 use App\Controllers\CliController;
 use App\Controllers\CreateInvestmentController;
 use App\Controllers\DeleteInvestmentController;
@@ -175,6 +176,15 @@ class AppServiceProvider
         );
 
         $container->bind(
+            CalculateInvestmentEstimateController::class,
+            fn($c) => new CalculateInvestmentEstimateController(
+                $c->getInstancia(HttpInputFactory::class),
+                $c->getInstancia(CalculateInvestmentUseCase::class),
+            ),
+            true
+        );
+
+        $container->bind(
             UpdateInvestmentController::class,
             fn($c) => new UpdateInvestmentController(
                 $c->getInstancia(HttpInputFactory::class),
@@ -210,6 +220,7 @@ class AppServiceProvider
                 $c->getInstancia(CreateInvestmentController::class),
                 $c->getInstancia(UpdateInvestmentController::class),
                 $c->getInstancia(DeleteInvestmentController::class),
+                $c->getInstancia(CalculateInvestmentEstimateController::class),
             ),
             true
         );
