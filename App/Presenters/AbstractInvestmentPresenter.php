@@ -40,7 +40,7 @@ abstract class AbstractInvestmentPresenter
         printf($mAcento, 'Tipo da taxa:', strtoupper($rateType));
         printf($mNormal, 'Capital Inicial:', $money($input->initialCapital));
 
-        if ($rateType === 'pre') {
+        if ($input->rateType === 'pre') {
             printf($mNormal, 'Rentabilidade:', $input->preFixedAnnualRate . '% a.a.');
         } else {
             printf($mNormal, 'Rentabilidade:', $input->cdiPercentage . '% do CDI');

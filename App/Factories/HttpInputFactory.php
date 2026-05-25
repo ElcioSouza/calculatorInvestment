@@ -15,6 +15,8 @@ final class HttpInputFactory extends BaseFactory
 
     public function create(array $params): InvestmentInput
     {
+        $params = $this->normalizeParamAliases($params);
+
         $defaultDate = (new \DateTime())->format('Y-m-d');
         $defaultSelic = $this->cdiRateService->fetchSelicAnnual('14.40');
 
@@ -36,11 +38,9 @@ final class HttpInputFactory extends BaseFactory
         $capitalRaw     = $this->getParam($params, 'capital', '10000');
         $initialCapital = $this->normalizePositiveNumberOrFail(trim($capitalRaw), 'Capital inicial');
 
-        $cdiPercentage      = '100';
-        $selicMeta          = $defaultSelic;
-        $preFixedAnnualRate = '11.50';
-
         if ($rateType === 'pre') {
+            $cdiPercentage      = $this->getParam($params, 'cdi', '');
+            $selicMeta          = $this->getParam($params, 'selic_meta', '');
             $preRateRaw         = $this->getParam($params, 'pre_rate', '11.50');
             $preFixedAnnualRate = $this->normalizePositiveNumberOrFail(trim($preRateRaw), 'Taxa prefixada anual');
         } else {
@@ -48,6 +48,10 @@ final class HttpInputFactory extends BaseFactory
             $selicRaw      = $this->getParam($params, 'selic_meta', $defaultSelic);
             $cdiPercentage = $this->normalizePositiveNumberOrFail(trim($cdiRaw), 'Rentabilidade (% do CDI)');
             $selicMeta     = $this->normalizePositiveNumberOrFail(trim($selicRaw), 'Selic Meta');
+            $preRateRaw    = $this->getParam($params, 'pre_rate', '');
+            $preFixedAnnualRate = $preRateRaw !== ''
+                ? $this->normalizePositiveNumberOrFail(trim($preRateRaw), 'Taxa prefixada anual')
+                : '';
         }
         
         $cdiOver   = '';
@@ -74,6 +78,22 @@ final class HttpInputFactory extends BaseFactory
             months: (int) $months,
             cdiOver: $cdiOver,
         );
+    }
+
+    private function normalizeParamAliases(array $params): array
+    {
+        $aliases = [
+            'initial_capital' => 'capital',
+            'cdi_percentage'  => 'cdi',
+            'pre_fixed_rate'  => 'pre_rate',
+            'cdi_over'        => 'cdi_annual',
+        ];
+        foreach ($aliases as $alias => $internal) {
+            if (array_key_exists($alias, $params) && $params[$alias] !== '' && $params[$alias] !== null) {
+                $params[$internal] = $params[$alias];
+            }
+        }
+        return $params;
     }
 
     private function getParam(array $params, string $key, string $default): string
