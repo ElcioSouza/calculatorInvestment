@@ -2,18 +2,10 @@
 
 namespace App\Services;
 
+use App\Core\Config;
 
 class CdiRateService
 {
-    private const SGS_CDI_ANNUAL_URL =
-        'https://api.bcb.gov.br/dados/serie/bcdata.sgs.4390/dados/ultimos/5?formato=json';
-
-    private const SGS_CDI_DAILY_URL =
-        'https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados/ultimos/5?formato=json';
-
-    private const SGS_SELIC_DAILY_URL =
-        'https://api.bcb.gov.br/dados/serie/bcdata.sgs.11/dados/ultimos/5?formato=json';
-
     private CdiApiClient $apiClient;
     private CdiRateCalculator $calculator;
 
@@ -29,7 +21,9 @@ class CdiRateService
         string $spreadFallback = '-0.10'
     ): array {
         
-        $dailyResult = $this->apiClient->fetchLatestRecord(self::SGS_CDI_DAILY_URL);
+        $dailyResult = $this->apiClient->fetchLatestRecord(
+            Config::getString('BCB_CDI_DAILY_URL', 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados/ultimos/5?formato=json')
+        );
         if ($dailyResult !== null) {
             ['valor' => $valorDiario, 'data' => $data] = $dailyResult;
             if ($this->calculator->isDailyRateValid($valorDiario)) {
@@ -41,7 +35,9 @@ class CdiRateService
             }
         }
         
-        $monthlyResult = $this->apiClient->fetchLatestRecord(self::SGS_CDI_ANNUAL_URL);
+        $monthlyResult = $this->apiClient->fetchLatestRecord(
+            Config::getString('BCB_CDI_ANNUAL_URL', 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.4390/dados/ultimos/5?formato=json')
+        );
         if ($monthlyResult !== null) {
             ['valor' => $valor, 'data' => $data] = $monthlyResult;
             if ($valor > 0.0 && $valor < 100.0) {
@@ -70,7 +66,9 @@ class CdiRateService
 
     public function fetchSelicAnnual(?string $fallback = null): ?string
     {
-        $result = $this->apiClient->fetchLatestRecord(self::SGS_SELIC_DAILY_URL);
+        $result = $this->apiClient->fetchLatestRecord(
+            Config::getString('BCB_SELIC_DAILY_URL', 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.11/dados/ultimos/5?formato=json')
+        );
         if ($result !== null) {
             ['valor' => $valorDiario] = $result;
             if ($this->calculator->isDailyRateValid($valorDiario)) {
