@@ -8,6 +8,7 @@ use App\Contracts\CountsBusinessDaysInterface;
 use App\Contracts\FormatsAmountInterface;
 use App\Contracts\InvestmentRepositoryInterface;
 use App\Helpers\InvestmentCalculationHelper as InvestmentCalculation;
+use App\Repositories\CreateInvestmentRepository;
 use App\ValueObjects\Investment;
 use App\ValueObjects\InvestmentInput;
 use DateTimeImmutable;
@@ -22,15 +23,45 @@ class InvestmentService extends ServiceBase
         private FormatsAmountInterface $formatter,
         private InvestmentCalculation $calculationInvestment,
         private InvestmentRepositoryInterface $repository,
+        private CreateInvestmentRepository $createInvestmentRepository,
     ) {}
 
     private ?int $lastSavedId = null;
+    private ?int $lastId = null;
 
     public function handle(InvestmentInput $input): Investment
     {
         $result = $this->process($input);
 
-        $this->lastSavedId = $this->repository->save($input, $result);
+        $this->lastId = $this->createInvestmentRepository->insertInvestment([
+            'initial_capital'       => $input->initialCapital,
+            'investment_type'       => $input->investmentType,
+            'rate_type'             => $input->rateType,
+            'cdi_percentage'        => $input->cdiPercentage !== '' ? $input->cdiPercentage : '0',
+            'selic_meta'            => $input->selicMeta !== '' ? $input->selicMeta : '0',
+            'pre_fixed_annual_rate' => $input->preFixedAnnualRate !== '' ? $input->preFixedAnnualRate : '0',
+            'application_date'      => $input->applicationDate,
+            'redemption_date'       => $input->redemptionDate,
+            'months'                => $input->months,
+            'selic_is_over'         => $input->selicIsOver,
+            'cdi_over'              => $input->cdiOver,
+        ]);
+
+        $this->createInvestmentRepository->insertEstimate($this->lastId, [
+            'amount_bruto'          => $result->amountBruto,
+            'amount_liquid'         => $result->amountLiquid,
+            'profit_bruto'          => $result->profitBruto,
+            'profit_liquid'         => $result->profitLiquid,
+            'iof_value'             => $result->iofValue,
+            'ir_tax_amount'         => $result->irTaxAmount,
+            'monthly_profit_liquid' => $result->monthlyProfitLiquid,
+            'daily_profit_display'  => $result->dailyProfitDisplay,
+            'is_isento'             => $result->isIsento,
+            'days'                  => $result->days,
+            'business_days'         => $result->businessDays,
+        ]);
+
+        $this->lastSavedId = $this->repository->save($input, $result, $this->lastId);
 
         return $result;
     }
@@ -38,6 +69,11 @@ class InvestmentService extends ServiceBase
     public function getLastSavedId(): ?int
     {
         return $this->lastSavedId;
+    }
+
+    public function getLastId(): ?int
+    {
+        return $this->lastId;
     }
 
     public function recalculateAndUpdate(int|string $id, InvestmentInput $input): Investment

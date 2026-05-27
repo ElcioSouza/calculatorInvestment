@@ -17,9 +17,9 @@ class JsonFileInvestmentRepository implements InvestmentRepositoryInterface
         $this->loadFromFile();
     }
 
-    public function save(InvestmentInput $input, Investment $result): int
+    public function save(InvestmentInput $input, Investment $result, ?int $id = null): int
     {
-        $id = $this->nextId++;
+        $id = $id ?? $this->nextId++;
         $this->storage[$id] = [
             'id'     => $id,
             'input'  => $this->inputToArray($input),

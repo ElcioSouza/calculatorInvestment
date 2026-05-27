@@ -7,7 +7,7 @@ use App\ValueObjects\Investment;
 
 interface InvestmentRepositoryInterface
 {
-    public function save(InvestmentInput $input, Investment $result): int;
+    public function save(InvestmentInput $input, Investment $result, ?int $id = null): int;
 
     public function all(): array;
 

@@ -420,11 +420,10 @@ HttpApplication (roteamento)
   |             |      +--> CdiRateService::fetchCdiAnnual()
   |             +--> CalculateInvestmentUseCase::execute() → retorna Investment
   |             |      +--> InvestmentService::handle()
-  |             |             +--> (salva via JsonFileInvestmentRepository)
-  |             |             +--> (também persiste via CreateInvestmentRepository no MySQL)
-  |             +--> CreateInvestmentRepository::insertInvestment()  → INSERT na tabela `investments`
-  |             +--> CreateInvestmentRepository::insertEstimate()    → INSERT na tabela `investment_estimate`
-  |             +--> CalculateInvestmentUseCase::getLastSavedId() → retorna o ID gerado
+  |             |             +--> CreateInvestmentRepository::insertInvestment()  → INSERT na tabela `investments` (gera ID no MySQL)
+  |             |             +--> CreateInvestmentRepository::insertEstimate()    → INSERT na tabela `investment_estimate`
+  |             |             +--> JsonFileInvestmentRepository::save()            → salva no JSON usando o mesmo ID do MySQL
+  |             +--> CalculateInvestmentUseCase::getLastId() → retorna o ID gerado (MySQL)
   |
   +--> PUT /api/calculate/{id}
   |      +--> UpdateInvestmentController::execute()
@@ -435,7 +434,9 @@ HttpApplication (roteamento)
   +--> DELETE /api/calculate/{id}
          +--> DeleteInvestmentController::execute()
                 +--> DeleteInvestmentUseCase
-                +--> JsonFileInvestmentRepository
+                +--> DeleteInvestmentService
+                       +--> JsonFileInvestmentRepository (exclui do JSON)
+                       +--> DeleteInvestmentRepository (exclui do MySQL independentemente)
 ```
 
 ---
@@ -656,7 +657,8 @@ $$
 - **Arquitetura:** Container DI, camada de serviços, presenters, repositories
 - **Persistência:**
   - Arquivo JSON (`data/investments.json`) via `JsonFileInvestmentRepository` (padrão, usado por CLI e todas as rotas)
-  - MySQL via `CreateInvestmentRepository` (adicional na rota `POST /api/calculate`)
+  - MySQL via `CreateInvestmentRepository` (INSERT na rota `POST /api/calculate`) e `DeleteInvestmentRepository` (DELETE na rota `DELETE /api/calculate/{id}`)
+  - IDs sincronizados: MySQL gera o ID via AUTO_INCREMENT, e o mesmo ID é usado como chave no JSON
 - **Banco de Dados:** MySQL 5.7+ / 8.0+ com PDO (`App\Core\Database`)
 - **Ambiente:** `.env` para configuração de credenciais do banco
 - **Modos de execução:** CLI interativo + API REST (auto-detectado via `PHP_SAPI`)
@@ -758,7 +760,8 @@ calculatorInvestment/
 │   ├── Repositories/
 │   │   ├── InMemoryInvestmentRepository.php      # Em memoria (para testes)
 │   │   ├── JsonFileInvestmentRepository.php      # Persistente em arquivo JSON (padrao)
-│   │   └── CreateInvestmentRepository.php        # Persistencia MySQL (POST /api/calculate)
+│   │   ├── CreateInvestmentRepository.php        # Persistencia MySQL (POST /api/calculate)
+│   │   └── DeleteInvestmentRepository.php        # Exclusao MySQL (DELETE /api/calculate/{id})
 │   ├── Services/
 │   │   ├── ServiceBase.php                # Constantes: escala, precisao, tabela IOF, feriados
 │   │   ├── AmountFormatterService.php     # Formatacao de valores monetarios
@@ -1314,13 +1317,17 @@ Serviço central que orquestra todo o cálculo do investimento.
 #### `__construct(CalculatesRateInterface, CalculatesTaxInterface, CalculatesProfitInterface, CountsBusinessDaysInterface, FormatsAmountInterface, InvestmentCalculation, InvestmentRepositoryInterface)`
 
 #### `handle(InvestmentInput $input): Investment`
-- **Descrição:** Executa `process()` e salva o resultado no repositório. O ID gerado é armazenado internamente e acessível via `getLastSavedId()`.
+- **Descrição:** Executa `process()`, persiste no MySQL primeiro (`CreateInvestmentRepository`), depois salva no JSON (`JsonFileInvestmentRepository`) usando o mesmo ID gerado pelo MySQL. O ID fica acessível via `getLastId()` e `getLastSavedId()`.
 - **Parâmetros:**
   - `$input` (`InvestmentInput`) — Dados de entrada.
 - **Retorno:** `Investment`
 
 #### `getLastSavedId(): ?int`
-- **Descrição:** Retorna o ID do último investimento salvo via `handle()`.
+- **Descrição:** Retorna o ID do último investimento salvo via `handle()` (mesmo valor de `getLastId()`).
+- **Retorno:** `?int`
+
+#### `getLastId(): ?int`
+- **Descrição:** Retorna o ID gerado pelo MySQL na última execução de `handle()`.
 - **Retorno:** `?int`
 
 #### `recalculateAndUpdate(int|string $id, InvestmentInput $input): Investment`
@@ -1665,7 +1672,11 @@ Orquestrador principal da aplicação CLI.
 - **Retorno:** `Investment`
 
 #### `getLastSavedId(): ?int`
-- **Descrição:** Retorna o ID gerado pelo repositório na última execução de `execute()`.
+- **Descrição:** Retorna o ID gerado pelo MySQL na última execução de `execute()`.
+- **Retorno:** `?int`
+
+#### `getLastId(): ?int`
+- **Descrição:** Retorna o ID gerado pelo MySQL (mesmo que `getLastSavedId()`).
 - **Retorno:** `?int`
 
 #### `recalculate(InvestmentInput $input): Investment`
@@ -1687,9 +1698,11 @@ Orquestrador principal da aplicação CLI.
 
 Repositório em memória (útil para testes). Implementa `InvestmentRepositoryInterface`.
 
-#### `save(InvestmentInput $input, Investment $result): int`
-- **Descrição:** Armazena o resultado do investimento em memória com ID auto-incremental.
-- **Retorno:** `int` — O ID gerado.
+#### `save(InvestmentInput $input, Investment $result, ?int $id = null): int`
+- **Descrição:** Armazena o resultado do investimento em memória com ID auto-incremental. Se `$id` for fornecido, usa esse ID em vez do auto-incremento.
+- **Parâmetros:**
+  - `$id` (`?int`, default `null`) — ID opcional (usado pelo `InvestmentService` para sincronizar com MySQL).
+- **Retorno:** `int` — O ID gerado ou utilizado.
 
 #### `all(): array`
 - **Descrição:** Retorna todos os resultados armazenados.
@@ -1722,9 +1735,11 @@ Repositório persistente em arquivo JSON (`data/investments.json`). É o reposit
 - **Parâmetros:**
   - `$filePath` (`?string`) — Caminho customizado (padrão: `data/investments.json`).
 
-#### `save(InvestmentInput $input, Investment $result): int`
-- **Descrição:** Salva novo investimento com ID auto-incremental e persiste no arquivo.
-- **Retorno:** `int` — O ID gerado.
+#### `save(InvestmentInput $input, Investment $result, ?int $id = null): int`
+- **Descrição:** Salva novo investimento e persiste no arquivo. Se `$id` for fornecido (pelo `InvestmentService`, vindo do MySQL AUTO_INCREMENT), usa esse ID; caso contrário, gera ID auto-incremental interno.
+- **Parâmetros:**
+  - `$id` (`?int`, default `null`) — ID opcional para sincronizar com MySQL.
+- **Retorno:** `int` — O ID utilizado.
 
 #### `all(): array`
 - **Descrição:** Retorna todos os investimentos com objetos `InvestmentInput` e `Investment` reconstruídos.

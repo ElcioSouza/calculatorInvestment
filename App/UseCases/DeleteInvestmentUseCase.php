@@ -2,14 +2,16 @@
 
 namespace App\UseCases;
 
-use App\Contracts\InvestmentRepositoryInterface;
+use App\Services\DeleteInvestmentService;
 
 class DeleteInvestmentUseCase
 {
-    public function __construct(private InvestmentRepositoryInterface $repository) {}
+    public function __construct(
+        private DeleteInvestmentService $service,
+    ) {}
 
     public function execute(string $id): bool
     {
-        return $this->repository->delete($id);
+        return $this->service->execute($id);
     }
 }

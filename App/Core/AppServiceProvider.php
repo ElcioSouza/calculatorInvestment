@@ -19,10 +19,12 @@ use App\Helpers\DefaultInvestmentCalculationHelper as DefaultInvestmentCalculati
 use App\Helpers\InvestmentCalculationHelper as InvestmentCalculation;
 use App\Presenters\InvestmentPresenter;
 use App\Repositories\CreateInvestmentRepository;
+use App\Repositories\DeleteInvestmentRepository;
 use App\Services\AmountFormatterService;
 use App\Services\BusinessDayService;
 use App\Services\CdiRateService;
 use App\Services\DailyReportService;
+use App\Services\DeleteInvestmentService;
 use App\Services\InvestmentService;
 use App\Services\ProfitCalculationService;
 use App\Services\RateCalculationService;
@@ -67,6 +69,7 @@ class AppServiceProvider
                 formatter: $c->getInstancia(AmountFormatterService::class),
                 calculationInvestment: $c->getInstancia(InvestmentCalculation::class),
                 repository: $c->getInstancia(\App\Contracts\InvestmentRepositoryInterface::class),
+                createInvestmentRepository: new CreateInvestmentRepository(Database::getConnection()),
             ),
             true
         );
@@ -74,7 +77,7 @@ class AppServiceProvider
         $container->bind(
             CalculateInvestmentUseCase::class,
             fn($c) => new CalculateInvestmentUseCase(
-                service: $c->getInstancia(InvestmentService::class)
+                service: $c->getInstancia(InvestmentService::class),
             ),
             true
         );
@@ -128,9 +131,18 @@ class AppServiceProvider
         );
 
         $container->bind(
+            DeleteInvestmentService::class,
+            fn($c) => new DeleteInvestmentService(
+                $c->getInstancia(\App\Contracts\InvestmentRepositoryInterface::class),
+                new DeleteInvestmentRepository(Database::getConnection()),
+            ),
+            true
+        );
+
+        $container->bind(
             DeleteInvestmentUseCase::class,
             fn($c) => new DeleteInvestmentUseCase(
-                $c->getInstancia(\App\Contracts\InvestmentRepositoryInterface::class)
+                $c->getInstancia(DeleteInvestmentService::class),
             ),
             true
         );
@@ -172,7 +184,6 @@ class AppServiceProvider
             fn($c) => new CreateInvestmentController(
                 $c->getInstancia(HttpInputFactory::class),
                 $c->getInstancia(CalculateInvestmentUseCase::class),
-                new CreateInvestmentRepository(Database::getConnection()),
             ),
             true
         );
