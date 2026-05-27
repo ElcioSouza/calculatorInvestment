@@ -22,7 +22,7 @@ CREATE TABLE investments (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
-CREATE TABLE investment_results (
+CREATE TABLE investment_estimate (
     id INT AUTO_INCREMENT PRIMARY KEY,
     investment_id INT NOT NULL UNIQUE,
     amount_bruto DECIMAL(16,2) NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE investment_results (
     days INT NOT NULL,
     business_days INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_result_investment
+    CONSTRAINT fk_estimate_investment
         FOREIGN KEY (investment_id) REFERENCES investments(id)
         ON DELETE CASCADE
 ) ENGINE=InnoDB;
