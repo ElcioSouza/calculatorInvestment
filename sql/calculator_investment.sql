@@ -7,17 +7,17 @@ USE calculator_investment;
 CREATE TABLE investments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     initial_capital DECIMAL(16,2) NOT NULL,
-    investment_type ENUM('CDB', 'LCI', 'LCA') NOT NULL,
-    rate_type ENUM('Pre', 'Pos') NOT NULL,
-    cdi_percentage DECIMAL(8,4) NOT NULL DEFAULT 0,
-    selic_meta DECIMAL(8,4) NOT NULL DEFAULT 0,
+    investment_type ENUM('cdb', 'lci', 'lca') NOT NULL,
+    rate_type ENUM('pre', 'pos') NOT NULL,
+    cdi_percentage DECIMAL(8,2) NOT NULL DEFAULT 0,
+    selic_meta DECIMAL(8,2) NOT NULL DEFAULT 0,
     pre_fixed_annual_rate DECIMAL(8,4) NOT NULL DEFAULT 0,
     application_date DATE NOT NULL,
     redemption_date DATE NOT NULL,
     months INT NOT NULL,
     selic_is_over TINYINT(1) NOT NULL DEFAULT 0,
-    cdi_over VARCHAR(10) NOT NULL DEFAULT '',
-    is_isento TINYINT(1) GENERATED ALWAYS AS (investment_type != 'CDB') STORED,
+    cdi_over VARCHAR(20) NOT NULL DEFAULT '',
+    is_isento TINYINT(1) GENERATED ALWAYS AS (investment_type != 'cdb') STORED,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;

@@ -108,7 +108,7 @@ final class HttpInputFactory extends BaseFactory
         return match ($value) {
             '1', 'pre', 'pré' => 'pre',
             '2', 'pos', 'pós', 'post' => 'pos',
-            default => $value,
+            default => 'pos',
         };
     }
 
@@ -134,7 +134,7 @@ final class HttpInputFactory extends BaseFactory
             '1', 'cdb' => 'cdb',
             '2', 'lci' => 'lci',
             '3', 'lca' => 'lca',
-            default => $value,
+            default => 'cdb',
         };
     }
 }

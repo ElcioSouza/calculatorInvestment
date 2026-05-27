@@ -5,6 +5,7 @@ use App\Application\CliApplication;
 use App\Application\HttpApplication;
 use App\Controllers\CalculateController;
 use App\Controllers\CalculateInvestmentEstimateController;
+use App\Core\Database;
 use App\Controllers\CliController;
 use App\Controllers\CreateInvestmentController;
 use App\Controllers\DeleteInvestmentController;
@@ -17,7 +18,7 @@ use App\Factories\InvestmentInputFactory;
 use App\Helpers\DefaultInvestmentCalculationHelper as DefaultInvestmentCalculation;
 use App\Helpers\InvestmentCalculationHelper as InvestmentCalculation;
 use App\Presenters\InvestmentPresenter;
-
+use App\Repositories\CreateInvestmentRepository;
 use App\Services\AmountFormatterService;
 use App\Services\BusinessDayService;
 use App\Services\CdiRateService;
@@ -108,7 +109,7 @@ class AppServiceProvider
             true
         );
 
-        // --- Use Cases ---
+        
 
         $container->bind(
             ListInvestmentsUseCase::class,
@@ -134,7 +135,7 @@ class AppServiceProvider
             true
         );
 
-        // --- CLI Controllers ---
+        
 
         $container->bind(CalculateController::class, fn($c) => new CalculateController(
             $c->getInstancia(InvestmentInputFactory::class),
@@ -148,7 +149,7 @@ class AppServiceProvider
             $c->getInstancia(InvestmentPresenter::class)
         ), true);
 
-        // --- HTTP Controllers ---
+        
 
         $container->bind(
             ListInvestmentsController::class,
@@ -171,6 +172,7 @@ class AppServiceProvider
             fn($c) => new CreateInvestmentController(
                 $c->getInstancia(HttpInputFactory::class),
                 $c->getInstancia(CalculateInvestmentUseCase::class),
+                new CreateInvestmentRepository(Database::getConnection()),
             ),
             true
         );

@@ -8,6 +8,7 @@ Aplicação em PHP (CLI + API REST) que calcula o retorno de investimentos em CD
 
 ## Índice
 
+- [Configuração do Banco de Dados (MySQL)](#configuração-do-banco-de-dados-mysql)
 - [Como Usar](#como-usar)
   - [CLI (modo interativo)](#cli-modo-interativo)
   - [API REST (modo HTTP)](#api-rest-modo-http)
@@ -21,6 +22,101 @@ Aplicação em PHP (CLI + API REST) que calcula o retorno de investimentos em CD
 - [Conceitos Econômicos](#conceitos-econômicos)
 - [Estrutura do Projeto](#estrutura-do-projeto)
 - [Catálogo de Métodos](#catálogo-de-métodos)
+
+---
+
+## Configuração do Banco de Dados (MySQL)
+
+A API REST utiliza MySQL como persistência adicional para a rota `POST /api/calculate`.
+
+### Pré-requisitos
+
+- MySQL 5.7+ ou 8.0+
+- Servidor MySQL rodando em `localhost:3306`
+
+### Criando o banco de dados
+
+```bash
+mysql -u root -p < sql/calculator_investment.sql
+```
+
+Senha padrão: `root`
+
+### Configuração de ambiente
+
+Copie o arquivo de exemplo e ajuste se necessário:
+
+```bash
+cp .env.example .env
+```
+
+Conteúdo do `.env`:
+
+```env
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_NAME=calculator_investment
+DB_USER=root
+DB_PASS=root
+DB_CHARSET=utf8mb4
+```
+
+### Estrutura das tabelas
+
+O schema (`sql/calculator_investment.sql`) define 4 tabelas:
+
+| Tabela | Descrição |
+|--------|-----------|
+| `investments` | Dados principais do investimento |
+| `investment_estimate` | Projeção diária detalhada |
+| `cdi_rates` | Histórico de taxas CDI obtidas da API do BCB |
+| `selic_rates` | Histórico de taxas Selic utilizadas |
+
+**`investments`:**
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| `id` | INT AUTO_INCREMENT PK | ID único |
+| `investment_type` | ENUM('cdb','lci','lca') | Tipo de investimento |
+| `rate_type` | ENUM('pre','pos') | Tipo de taxa |
+| `capital` | DECIMAL(15,2) | Capital inicial |
+| `cdi_percentage` | DECIMAL(8,2) | Percentual do CDI |
+| `months` | INT | Prazo em meses |
+| `application_date` | DATE | Data de aplicação |
+| `redemption_date` | DATE | Data de resgate |
+| `pre_fixed_annual_rate` | DECIMAL(8,2) | Taxa pré-fixada anual |
+| `cdi_annual` | VARCHAR(20) | Taxa CDI anual obtida do BCB |
+| `selic_meta` | DECIMAL(8,2) | Taxa Selic Meta |
+| `amount_bruto` | DECIMAL(15,2) | Montante bruto final |
+| `profit_bruto` | DECIMAL(15,2) | Lucro bruto |
+| `amount_liquid` | DECIMAL(15,2) | Montante líquido final |
+| `profit_liquid` | DECIMAL(15,2) | Lucro líquido |
+| `created_at` | TIMESTAMP | Data de criação |
+
+**`investment_estimate`:**
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| `id` | INT AUTO_INCREMENT PK | ID único |
+| `investment_id` | INT FK → investments.id | Investimento pai |
+| `display_day` | INT | Dia útil da projeção |
+| `date` | DATE | Data do dia útil |
+| `gross_amount` | DECIMAL(15,2) | Montante bruto no dia |
+| `gross_profit` | DECIMAL(15,2) | Lucro bruto acumulado |
+| `iof` | DECIMAL(15,2) | IOF calculado |
+| `ir` | DECIMAL(15,2) | IR calculado |
+| `iof_percentage` | DECIMAL(5,2) | Alíquota de IOF |
+| `ir_percentage` | DECIMAL(5,2) | Alíquota de IR |
+| `liquid_amount` | DECIMAL(15,2) | Montante líquido |
+| `liquid_profit` | DECIMAL(15,2) | Lucro líquido |
+
+### Script de migração
+
+Caso o schema já exista e precise ser sincronizado:
+
+```bash
+php migrate.php
+```
 
 ---
 
@@ -325,6 +421,9 @@ HttpApplication (roteamento)
   |             +--> CalculateInvestmentUseCase::execute() → retorna Investment
   |             |      +--> InvestmentService::handle()
   |             |             +--> (salva via JsonFileInvestmentRepository)
+  |             |             +--> (também persiste via CreateInvestmentRepository no MySQL)
+  |             +--> CreateInvestmentRepository::insertInvestment()  → INSERT na tabela `investments`
+  |             +--> CreateInvestmentRepository::insertEstimate()    → INSERT na tabela `investment_estimate`
   |             +--> CalculateInvestmentUseCase::getLastSavedId() → retorna o ID gerado
   |
   +--> PUT /api/calculate/{id}
@@ -555,7 +654,11 @@ $$
 - **Matemática:** BC Math (`bcadd`, `bcsub`, `bcmul`, `bcdiv`, `bccomp`) + `pow()` para juros compostos
 - **Datas:** `DateTimeImmutable`, `DatePeriod`, `DateInterval`
 - **Arquitetura:** Container DI, camada de serviços, presenters, repositories
-- **Persistência:** Arquivo JSON (`data/investments.json`) via `JsonFileInvestmentRepository` (persistente entre requisições)
+- **Persistência:**
+  - Arquivo JSON (`data/investments.json`) via `JsonFileInvestmentRepository` (padrão, usado por CLI e todas as rotas)
+  - MySQL via `CreateInvestmentRepository` (adicional na rota `POST /api/calculate`)
+- **Banco de Dados:** MySQL 5.7+ / 8.0+ com PDO (`App\Core\Database`)
+- **Ambiente:** `.env` para configuração de credenciais do banco
 - **Modos de execução:** CLI interativo + API REST (auto-detectado via `PHP_SAPI`)
 
 ---
@@ -604,10 +707,16 @@ Feriados fixos e móveis considerados no cálculo de dias úteis:
 
 ```
 calculatorInvestment/
+├── .env                                   # Credenciais do banco de dados
+├── .env.example                           # Template do .env
 ├── bootstrap.php                          # Autoload, Container, AppServiceProvider
 ├── index.php                              # Entry point (CLI + HTTP)
+├── migrate.php                            # Sincroniza schema MySQL
+├── test_db.php                            # Teste de conexao e insert MySQL
 ├── composer.json
 ├── htaccess                               # Apache rewrite rules
+├── sql/
+│   └── calculator_investment.sql          # Schema MySQL (4 tabelas + indexes)
 ├── App/
 │   ├── Application/
 │   │   ├── CliApplication.php             # Orquestrador CLI
@@ -627,13 +736,14 @@ calculatorInvestment/
 │   │   ├── CalculateController.php        # Logica de calculo (CLI)
 │   │   ├── InvestmentResultController.php # Exibicao de resultado (CLI)
 │   │   ├── BaseApiController.php          # Controller base (JSON response, buildPayload)
-│   │   ├── CreateInvestmentController.php # Cria investimento
+│   │   ├── CreateInvestmentController.php # Cria investimento (JSON + MySQL)
 │   │   ├── ListInvestmentsController.php  # Lista todos
 │   │   ├── ShowInvestmentController.php   # Busca por ID
 │   │   ├── UpdateInvestmentController.php # Atualiza por ID
 │   │   └── DeleteInvestmentController.php # Deleta por ID
 │   ├── Core/
 │   │   ├── Container.php                  # Container de injecao de dependencia
+│   │   ├── Database.php                   # Conexao PDO singleton com MySQL
 │   │   └── AppServiceProvider.php         # Registro de todos os servicos
 │   ├── Factories/
 │   │   ├── BaseFactory.php                # Validacao, feriados, datas
@@ -646,8 +756,9 @@ calculatorInvestment/
 │   │   ├── AbstractInvestmentPresenter.php
 │   │   └── InvestmentPresenter.php
 │   ├── Repositories/
-│   │   ├── InMemoryInvestmentRepository.php  # Em memoria (para testes)
-│   │   └── JsonFileInvestmentRepository.php  # Persistente em arquivo JSON (padrao)
+│   │   ├── InMemoryInvestmentRepository.php      # Em memoria (para testes)
+│   │   ├── JsonFileInvestmentRepository.php      # Persistente em arquivo JSON (padrao)
+│   │   └── CreateInvestmentRepository.php        # Persistencia MySQL (POST /api/calculate)
 │   ├── Services/
 │   │   ├── ServiceBase.php                # Constantes: escala, precisao, tabela IOF, feriados
 │   │   ├── AmountFormatterService.php     # Formatacao de valores monetarios
@@ -707,12 +818,53 @@ Provedor que registra todos os serviços no Container.
 #### `register(Container $container): void`
 - **Descrição:** Registra todos os serviços do sistema como singletons. Principais bindings:
   - Repositório padrão: `JsonFileInvestmentRepository` (persistente)
+  - Repositório MySQL: `CreateInvestmentRepository` (injetado apenas no `CreateInvestmentController`)
+  - Conexão PDO: `Database::getConnection()` (usada pelo `CreateInvestmentRepository`)
   - Use Cases: `CalculateInvestmentUseCase`, `ListInvestmentsUseCase`, `ShowInvestmentUseCase`, `DeleteInvestmentUseCase`
   - Controllers API: `CreateInvestmentController`, `ListInvestmentsController`, `ShowInvestmentController`, `UpdateInvestmentController`, `DeleteInvestmentController`
   - Services: `AmountFormatterService`, `BusinessDayService`, `CdiRateService`, `InvestmentService`, etc.
 - **Parâmetros:**
   - `$container` (`Container`) — Instância do Container de DI.
 - **Retorno:** `void`
+
+---
+
+### App\Core\Database
+
+Conexão PDO singleton com MySQL. Lê credenciais do arquivo `.env`.
+
+#### `getConnection(): \PDO`
+- **Descrição:** Retorna a instância única da conexão PDO. Cria a conexão na primeira chamada usando as variáveis de ambiente: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_CHARSET`.
+- **Parâmetros:** Nenhum.
+- **Retorno:** `\PDO` — Instância da conexão PDO.
+- **Exceções:** `\RuntimeException` se `.env` não for encontrado ou se a conexão falhar.
+
+#### `loadEnv(string $filePath): void`
+- **Descrição:** Carrega variáveis do arquivo `.env` no formato `CHAVE=valor`.
+- **Parâmetros:**
+  - `$filePath` (`string`) — Caminho para o arquivo `.env`.
+- **Retorno:** `void`
+
+---
+
+### App\Repositories\CreateInvestmentRepository
+
+Repositório de persistência MySQL focado exclusivamente na rota `POST /api/calculate`. Não implementa `InvestmentRepositoryInterface` — possui métodos de única responsabilidade, cada um executando um único INSERT.
+
+#### `insertInvestment(array $data): int`
+- **Descrição:** Insere um registro na tabela `investments` com os dados do investimento calculado.
+- **Parâmetros:**
+  - `$data` (`array`) — Dados do investimento: `investment_type`, `rate_type`, `capital`, `cdi_percentage`, `months`, `application_date`, `redemption_date`, `pre_fixed_annual_rate`, `cdi_annual`, `selic_meta`, `amount_bruto`, `profit_bruto`, `amount_liquid`, `profit_liquid`.
+- **Retorno:** `int` — O ID auto-incremental gerado.
+- **Exceções:** `\PDOException` em caso de erro de inserção.
+
+#### `insertEstimate(int $investmentId, array $estimate): int`
+- **Descrição:** Insere um registro na tabela `investment_estimate` com a projeção diária de um dia útil do investimento.
+- **Parâmetros:**
+  - `$investmentId` (`int`) — ID do investimento pai (FK `investments.id`).
+  - `$estimate` (`array`) — Dados da estimativa diária: `display_day`, `date`, `gross_amount`, `gross_profit`, `iof`, `ir`, `iof_percentage`, `ir_percentage`, `liquid_amount`, `liquid_profit`.
+- **Retorno:** `int` — O ID gerado.
+- **Exceções:** `\PDOException` em caso de erro de inserção.
 
 ---
 

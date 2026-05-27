@@ -67,7 +67,7 @@ abstract class AbstractInvestmentPresenter
         $mNormal = "%-40s %20s\n";
 
         printf($mNormal, 'Lucro Bruto:', $money($result->profitBruto));
-       // printf($mNormal, 'Lucro Bruto por dia:', $money(bcdiv($result->profitBruto, (string) $result->days, 2)));
+       
         printf($mNormal, 'Lucro Bruto por dia:', $money($result->dailyProfitDisplay));
         printf($mNormal, 'Montante Bruto:', $money($result->amountBruto));
 
