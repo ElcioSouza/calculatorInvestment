@@ -713,8 +713,6 @@ calculatorInvestment/
 ├── .env.example                           # Template do .env
 ├── bootstrap.php                          # Autoload, Container, AppServiceProvider
 ├── index.php                              # Entry point (CLI + HTTP)
-├── migrate.php                            # Sincroniza schema MySQL
-├── test_db.php                            # Teste de conexao e insert MySQL
 ├── composer.json
 ├── htaccess                               # Apache rewrite rules
 ├── sql/

@@ -29,7 +29,7 @@ class UpdateInvestmentController extends BaseApiController implements Controller
             $merged         = array_merge($originalParams, array_filter($params, fn($v) => $v !== '' && $v !== null));
 
             $input  = $this->inputFactory->create($merged);
-            $result = $this->calculateUseCase->recalculateAndUpdate($id, $input);
+            $result = $this->calculateUseCase->recalculateUpdate($id, $input);
 
             $this->jsonResponse(200, array_merge(
                 ['id' => $id],

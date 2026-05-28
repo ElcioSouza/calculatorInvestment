@@ -22,9 +22,9 @@ class CalculateInvestmentUseCase
         return $this->service->recalculate($input);
     }
 
-    public function recalculateAndUpdate(int|string $id, InvestmentInput $input): Investment
+    public function recalculateUpdate(int|string $id, InvestmentInput $input): Investment
     {
-        return $this->service->recalculateAndUpdate($id, $input);
+        return $this->service->recalculateUpdate($id, $input);
     }
 
     public function getLastSavedId(): ?int
