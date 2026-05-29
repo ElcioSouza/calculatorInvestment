@@ -53,7 +53,7 @@ class Config
         self::$loaded = true;
     }
 
-    public static function get(string $key, mixed $default = null): mixed
+    private static function env(string $key, mixed $default = null): mixed
     {
         if (!self::$loaded) {
             self::load();
@@ -72,32 +72,53 @@ class Config
         return $default;
     }
 
-    public static function getString(string $key, string $default = ''): string
+    public static function timezone(): string
     {
-        $value = self::get($key, $default);
-        return (string) $value;
+        return (string) self::env('APP_TIMEZONE');
     }
 
-    public static function getInt(string $key, int $default = 0): int
+    public static function dbHost(): string
     {
-        $value = self::get($key, $default);
-        return (int) $value;
+        return (string) self::env('DB_HOST');
     }
 
-    public static function getFloat(string $key, float $default = 0.0): float
+    public static function dbPort(): int
     {
-        $value = self::get($key, $default);
-        return (float) $value;
+        return (int) self::env('DB_PORT');
     }
 
-    public static function getBool(string $key, bool $default = false): bool
+    public static function dbName(): string
     {
-        $value = self::get($key, $default ? 'true' : 'false');
+        return (string) self::env('DB_NAME');
+    }
 
-        if (is_bool($value)) {
-            return $value;
-        }
+    public static function dbUser(): string
+    {
+        return (string) self::env('DB_USER');
+    }
 
-        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    public static function dbPass(): string
+    {
+        return (string) self::env('DB_PASS');
+    }
+
+    public static function dbCharset(): string
+    {
+        return (string) self::env('DB_CHARSET');
+    }
+
+    public static function bcbCdiDailyUrl(): string
+    {
+        return (string) self::env('BCB_CDI_DAILY_URL');
+    }
+
+    public static function bcbCdiAnnualUrl(): string
+    {
+        return (string) self::env('BCB_CDI_ANNUAL_URL');
+    }
+
+    public static function bcbSelicDailyUrl(): string
+    {
+        return (string) self::env('BCB_SELIC_DAILY_URL');
     }
 }

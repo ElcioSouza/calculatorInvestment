@@ -12,12 +12,12 @@ class Database
     public static function getConnection(): PDO
     {
         if (self::$instance === null) {
-            $host = Config::getString('DB_HOST', 'localhost');
-            $port = Config::getString('DB_PORT', '3306');
-            $name = Config::getString('DB_NAME', 'calculator_investment');
-            $user = Config::getString('DB_USER', 'root');
-            $pass = Config::getString('DB_PASS', '');
-            $charset = Config::getString('DB_CHARSET', 'utf8mb4');
+            $host = Config::dbHost();
+            $port = Config::dbPort();
+            $name = Config::dbName();
+            $user = Config::dbUser();
+            $pass = Config::dbPass();
+            $charset = Config::dbCharset();
 
             $dsn = "mysql:host={$host};port={$port};dbname={$name};charset={$charset}";
 

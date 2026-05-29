@@ -405,15 +405,19 @@ index.php --> bootstrap.php (Container + AppServiceProvider)
 HttpApplication (roteamento)
   |
   +--> GET /api/calculate (sem params de investimento)
-  |      +--> ListInvestmentsController::execute()
-  |             +--> ListInvestmentsUseCase
-  |             +--> JsonFileInvestmentRepository
-  |
-  +--> GET /api/calculate/{id}
-  |      +--> ShowInvestmentController::execute()
-  |             +--> ShowInvestmentUseCase
-  |             +--> JsonFileInvestmentRepository
-  |
+   |      +--> ListInvestmentsController::execute()
+   |             +--> ListInvestmentsUseCase
+   |             +--> ListInvestmentService (fallback: MySQL → JSON)
+   |                    +--> ListInvestmentRepository (MySQL - tenta primeiro)
+   |                    +--> JsonFileInvestmentRepository (fallback se MySQL falhar)
+   |
+   +--> GET /api/calculate/{id}
+   |      +--> ShowInvestmentController::execute()
+   |             +--> ShowInvestmentUseCase
+   |             +--> ShowInvestmentService (fallback: MySQL → JSON)
+   |                    +--> ShowInvestmentRepository (MySQL - tenta primeiro)
+   |                    +--> JsonFileInvestmentRepository (fallback se MySQL falhar)
+   |
   +--> GET|POST /api/calculate (com params de investimento)
   |      +--> CreateInvestmentController::execute()
   |             +--> HttpInputFactory::create()  (converte JSON em InvestmentInput)
@@ -426,10 +430,11 @@ HttpApplication (roteamento)
   |             +--> CalculateInvestmentUseCase::getLastId() → retorna o ID gerado (MySQL)
   |
   +--> PUT /api/calculate/{id}
-  |      +--> UpdateInvestmentController::execute()
-  |             +--> ShowInvestmentUseCase::execute() (busca existente)
-  |             +--> HttpInputFactory::inputToParams() + create() (merge de dados)
-  |             +--> CalculateInvestmentUseCase::recalculateAndUpdate() → recalcula + persiste
+   |      +--> UpdateInvestmentController::execute()
+   |             +--> ShowInvestmentUseCase::execute() (busca existente)
+   |             |      +--> ShowInvestmentService (fallback: MySQL → JSON)
+   |             +--> HttpInputFactory::inputToParams() + create() (merge de dados)
+   |             +--> CalculateInvestmentUseCase::recalculateAndUpdate() → recalcula + persiste
   |
   +--> DELETE /api/calculate/{id}
          +--> DeleteInvestmentController::execute()
@@ -657,10 +662,11 @@ $$
 - **Arquitetura:** Container DI, camada de serviços, presenters, repositories
 - **Persistência:**
   - Arquivo JSON (`data/investments.json`) via `JsonFileInvestmentRepository` (padrão, usado por CLI e todas as rotas)
-  - MySQL via `CreateInvestmentRepository` (INSERT na rota `POST /api/calculate`) e `DeleteInvestmentRepository` (DELETE na rota `DELETE /api/calculate/{id}`)
+  - MySQL via `CreateInvestmentRepository` (INSERT na rota `POST /api/calculate`), `DeleteInvestmentRepository` (DELETE), `ListInvestmentRepository` (SELECT), `ShowInvestmentRepository` (SELECT por ID)
+  - Services com fallback: `ListInvestmentService` e `ShowInvestmentService` tentam MySQL primeiro; se falhar, usam JSON
   - IDs sincronizados: MySQL gera o ID via AUTO_INCREMENT, e o mesmo ID é usado como chave no JSON
 - **Banco de Dados:** MySQL 5.7+ / 8.0+ com PDO (`App\Core\Database`)
-- **Ambiente:** `.env` para configuração de credenciais do banco
+- **Ambiente:** `.env` para configuração — lido via `App\Core\Config` com métodos tipados (`Config::dbHost()`, `Config::bcbCdiDailyUrl()`, etc.)
 - **Modos de execução:** CLI interativo + API REST (auto-detectado via `PHP_SAPI`)
 
 ---
@@ -759,7 +765,9 @@ calculatorInvestment/
 │   │   ├── InMemoryInvestmentRepository.php      # Em memoria (para testes)
 │   │   ├── JsonFileInvestmentRepository.php      # Persistente em arquivo JSON (padrao)
 │   │   ├── CreateInvestmentRepository.php        # Persistencia MySQL (POST /api/calculate)
-│   │   └── DeleteInvestmentRepository.php        # Exclusao MySQL (DELETE /api/calculate/{id})
+│   │   ├── DeleteInvestmentRepository.php        # Exclusao MySQL (DELETE /api/calculate/{id})
+│   │   ├── ListInvestmentRepository.php          # Leitura MySQL (lista investimentos)
+│   │   └── ShowInvestmentRepository.php          # Leitura MySQL (busca por ID)
 │   ├── Services/
 │   │   ├── ServiceBase.php                # Constantes: escala, precisao, tabela IOF, feriados
 │   │   ├── AmountFormatterService.php     # Formatacao de valores monetarios
@@ -768,9 +776,12 @@ calculatorInvestment/
 │   │   ├── CdiRateCalculator.php         # Validacao e anualizacao de taxas CDI
 │   │   ├── CdiRateService.php            # Obtencao da taxa CDI do BCB com fallback
 │   │   ├── DailyReportService.php        # Relatorio diario de simulacao IOF
+│   │   ├── DeleteInvestmentService.php   # Exclusao combinada JSON + MySQL
 │   │   ├── InvestmentService.php         # Servico central de calculo do investimento
+│   │   ├── ListInvestmentService.php     # Listagem com fallback MySQL → JSON
 │   │   ├── ProfitCalculationService.php  # Calculo de lucros
 │   │   ├── RateCalculationService.php    # Operacoes matematicas de taxas
+│   │   ├── ShowInvestmentService.php     # Busca por ID com fallback MySQL → JSON
 │   │   └── TaxCalculationService.php     # Calculo de IR e IOF
 │   ├── UseCases/
 │   │   ├── CalculateInvestmentUseCase.php
@@ -818,33 +829,90 @@ Provedor que registra todos os serviços no Container.
 
 #### `register(Container $container): void`
 - **Descrição:** Registra todos os serviços do sistema como singletons. Principais bindings:
-  - Repositório padrão: `JsonFileInvestmentRepository` (persistente)
-  - Repositório MySQL: `CreateInvestmentRepository` (injetado apenas no `CreateInvestmentController`)
-  - Conexão PDO: `Database::getConnection()` (usada pelo `CreateInvestmentRepository`)
+  - Repositório padrão: `JsonFileInvestmentRepository` (persistente JSON)
+  - Repositórios MySQL: `CreateInvestmentRepository`, `DeleteInvestmentRepository`, `ListInvestmentRepository`, `ShowInvestmentRepository`
+  - Services de fallback: `ListInvestmentService` (MySQL → JSON), `ShowInvestmentService` (MySQL → JSON)
+  - Conexão PDO: `Database::getConnection()`
   - Use Cases: `CalculateInvestmentUseCase`, `ListInvestmentsUseCase`, `ShowInvestmentUseCase`, `DeleteInvestmentUseCase`
   - Controllers API: `CreateInvestmentController`, `ListInvestmentsController`, `ShowInvestmentController`, `UpdateInvestmentController`, `DeleteInvestmentController`
-  - Services: `AmountFormatterService`, `BusinessDayService`, `CdiRateService`, `InvestmentService`, etc.
+  - Services: `AmountFormatterService`, `BusinessDayService`, `CdiRateService`, `InvestmentService`, `DeleteInvestmentService`, etc.
 - **Parâmetros:**
   - `$container` (`Container`) — Instância do Container de DI.
 - **Retorno:** `void`
 
 ---
 
+### App\Core\Config
+
+Carregador de variáveis de ambiente do arquivo `.env`. Provê métodos tipados para acesso a cada configuração.
+
+#### `load(?string $envDir = null): void`
+- **Descrição:** Carrega variáveis do arquivo `.env` no formato `CHAVE=valor` para `$_ENV`, `putenv()` e cache interno.
+- **Parâmetros:**
+  - `$envDir` (`?string`, default `null`) — Diretório onde está o `.env`. Padrão: 2 níveis acima do diretório da classe.
+- **Retorno:** `void`
+
+#### Métodos de acesso tipado
+
+| Método | Retorno | Chave `.env` |
+|--------|---------|--------------|
+| `timezone()` | `string` | `APP_TIMEZONE` |
+| `dbHost()` | `string` | `DB_HOST` |
+| `dbPort()` | `int` | `DB_PORT` |
+| `dbName()` | `string` | `DB_NAME` |
+| `dbUser()` | `string` | `DB_USER` |
+| `dbPass()` | `string` | `DB_PASS` |
+| `dbCharset()` | `string` | `DB_CHARSET` |
+| `bcbCdiDailyUrl()` | `string` | `BCB_CDI_DAILY_URL` |
+| `bcbCdiAnnualUrl()` | `string` | `BCB_CDI_ANNUAL_URL` |
+| `bcbSelicDailyUrl()` | `string` | `BCB_SELIC_DAILY_URL` |
+
+- **Nota:** Substitui os antigos métodos genéricos `get()`, `getString()`, `getInt()`, `getFloat()`, `getBool()` por métodos específicos com tipo definido na assinatura.
+
+---
+
 ### App\Core\Database
 
-Conexão PDO singleton com MySQL. Lê credenciais do arquivo `.env`.
+Conexão PDO singleton com MySQL. Utiliza `App\Core\Config` para obter as credenciais via métodos tipados (`Config::dbHost()`, `Config::dbPort()`, etc.).
 
 #### `getConnection(): \PDO`
-- **Descrição:** Retorna a instância única da conexão PDO. Cria a conexão na primeira chamada usando as variáveis de ambiente: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_CHARSET`.
+- **Descrição:** Retorna a instância única da conexão PDO. Cria a conexão na primeira chamada usando `Config::dbHost()`, `Config::dbPort()`, `Config::dbName()`, `Config::dbUser()`, `Config::dbPass()`, `Config::dbCharset()`.
 - **Parâmetros:** Nenhum.
 - **Retorno:** `\PDO` — Instância da conexão PDO.
-- **Exceções:** `\RuntimeException` se `.env` não for encontrado ou se a conexão falhar.
+- **Exceções:** `\PDOException` se a conexão falhar.
 
-#### `loadEnv(string $filePath): void`
-- **Descrição:** Carrega variáveis do arquivo `.env` no formato `CHAVE=valor`.
-- **Parâmetros:**
-  - `$filePath` (`string`) — Caminho para o arquivo `.env`.
+#### `disconnect(): void`
+- **Descrição:** Fecha a conexão PDO (atribui `null` à instância singleton).
+- **Parâmetros:** Nenhum.
 - **Retorno:** `void`
+
+---
+
+### App\Repositories\ListInvestmentRepository
+
+Repositório MySQL para listagem de investimentos. Executa `SELECT ... JOIN` entre `investments` e `investment_estimate`, retornando array de `['id' => int, 'input' => InvestmentInput, 'result' => Investment]`.
+
+#### `__construct(PDO $pdo)`
+- **Parâmetros:**
+  - `$pdo` (`PDO`) — Conexão PDO com MySQL.
+
+#### `execute(): array`
+- **Descrição:** Lista todos os investimentos com JOIN na tabela `investment_estimate`, ordenados por `id DESC`.
+- **Retorno:** `array` — Array de itens com `id`, `input` (`InvestmentInput`), `result` (`Investment`).
+
+---
+
+### App\Repositories\ShowInvestmentRepository
+
+Repositório MySQL para busca de investimento por ID. Mesma estrutura JOIN que `ListInvestmentRepository`, mas com filtro `WHERE i.id = :id`.
+
+#### `__construct(PDO $pdo)`
+- **Parâmetros:**
+  - `$pdo` (`PDO`) — Conexão PDO com MySQL.
+
+#### `execute(int|string $id): ?array`
+- **Descrição:** Busca investimento por ID. Retorna `null` se não encontrado.
+- **Retorno:** `?array` — `['id' => int, 'input' => InvestmentInput, 'result' => Investment]` ou `null`.
 
 ---
 
@@ -1305,6 +1373,36 @@ Implementação concreta de `CountsBusinessDaysInterface`. Conta dias úteis con
 - **Parâmetros:**
   - `$year` (`int`) — Ano.
 - **Retorno:** `\DateTimeImmutable`
+
+---
+
+### App\Services\ListInvestmentService
+
+Service de listagem com fallback: tenta ler do MySQL primeiro; se falhar (conexão indisponível, tabelas ausentes), cai no repositório JSON.
+
+#### `__construct(InvestmentRepositoryInterface $jsonRepository, ListInvestmentRepository $mysqlRepository)`
+- **Parâmetros:**
+  - `$jsonRepository` — Repositório JSON (`InvestmentRepositoryInterface`).
+  - `$mysqlRepository` — Repositório MySQL (`ListInvestmentRepository`).
+
+#### `execute(): array`
+- **Descrição:** Tenta `$mysqlRepository->execute()` dentro de um `try/catch`. Se lançar exceção, retorna `$jsonRepository->all()`.
+- **Retorno:** `array`
+
+---
+
+### App\Services\ShowInvestmentService
+
+Service de busca por ID com fallback: tenta MySQL primeiro; se falhar, usa JSON.
+
+#### `__construct(InvestmentRepositoryInterface $jsonRepository, ShowInvestmentRepository $mysqlRepository)`
+- **Parâmetros:**
+  - `$jsonRepository` — Repositório JSON.
+  - `$mysqlRepository` — Repositório MySQL (`ShowInvestmentRepository`).
+
+#### `execute(string $id): ?array`
+- **Descrição:** Tenta `$mysqlRepository->execute($id)`. Se lançar exceção, retorna `$jsonRepository->findById($id)`.
+- **Retorno:** `?array`
 
 ---
 

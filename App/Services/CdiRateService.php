@@ -22,7 +22,7 @@ class CdiRateService
     ): array {
         
         $dailyResult = $this->apiClient->fetchLatestRecord(
-            Config::getString('BCB_CDI_DAILY_URL', 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados/ultimos/5?formato=json')
+            Config::bcbCdiDailyUrl()
         );
         if ($dailyResult !== null) {
             ['valor' => $valorDiario, 'data' => $data] = $dailyResult;
@@ -36,7 +36,7 @@ class CdiRateService
         }
         
         $monthlyResult = $this->apiClient->fetchLatestRecord(
-            Config::getString('BCB_CDI_ANNUAL_URL', 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.4390/dados/ultimos/5?formato=json')
+            Config::bcbCdiAnnualUrl()
         );
         if ($monthlyResult !== null) {
             ['valor' => $valor, 'data' => $data] = $monthlyResult;
@@ -67,7 +67,7 @@ class CdiRateService
     public function fetchSelicAnnual(?string $fallback = null): ?string
     {
         $result = $this->apiClient->fetchLatestRecord(
-            Config::getString('BCB_SELIC_DAILY_URL', 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.11/dados/ultimos/5?formato=json')
+            Config::bcbSelicDailyUrl()
         );
         if ($result !== null) {
             ['valor' => $valorDiario] = $result;

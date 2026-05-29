@@ -2,14 +2,16 @@
 
 namespace App\UseCases;
 
-use App\Contracts\InvestmentRepositoryInterface;
+use App\Services\ShowInvestmentService;
 
 class ShowInvestmentUseCase
 {
-    public function __construct(private InvestmentRepositoryInterface $repository) {}
+    public function __construct(
+        private ShowInvestmentService $service,
+    ) {}
 
     public function execute(string $id): ?array
     {
-        return $this->repository->findById($id);
+        return $this->service->execute($id);
     }
 }

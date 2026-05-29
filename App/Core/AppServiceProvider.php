@@ -20,12 +20,16 @@ use App\Helpers\InvestmentCalculationHelper as InvestmentCalculation;
 use App\Presenters\InvestmentPresenter;
 use App\Repositories\CreateInvestmentRepository;
 use App\Repositories\DeleteInvestmentRepository;
+use App\Repositories\ListInvestmentRepository;
+use App\Repositories\ShowInvestmentRepository;
 use App\Services\AmountFormatterService;
 use App\Services\BusinessDayService;
 use App\Services\CdiRateService;
 use App\Services\DailyReportService;
 use App\Services\DeleteInvestmentService;
 use App\Services\InvestmentService;
+use App\Services\ListInvestmentService;
+use App\Services\ShowInvestmentService;
 use App\Services\ProfitCalculationService;
 use App\Services\RateCalculationService;
 use App\Services\TaxCalculationService;
@@ -112,12 +116,40 @@ class AppServiceProvider
             true
         );
 
-        
+        $container->bind(
+            ListInvestmentRepository::class,
+            fn() => new ListInvestmentRepository(Database::getConnection()),
+            false
+        );
+
+        $container->bind(
+            ShowInvestmentRepository::class,
+            fn() => new ShowInvestmentRepository(Database::getConnection()),
+            false
+        );
+
+        $container->bind(
+            ListInvestmentService::class,
+            fn($c) => new ListInvestmentService(
+                jsonRepository: $c->getInstancia(\App\Contracts\InvestmentRepositoryInterface::class),
+                mysqlRepository: $c->getInstancia(ListInvestmentRepository::class),
+            ),
+            true
+        );
+
+        $container->bind(
+            ShowInvestmentService::class,
+            fn($c) => new ShowInvestmentService(
+                jsonRepository: $c->getInstancia(\App\Contracts\InvestmentRepositoryInterface::class),
+                mysqlRepository: $c->getInstancia(ShowInvestmentRepository::class),
+            ),
+            true
+        );
 
         $container->bind(
             ListInvestmentsUseCase::class,
             fn($c) => new ListInvestmentsUseCase(
-                $c->getInstancia(\App\Contracts\InvestmentRepositoryInterface::class)
+                $c->getInstancia(ListInvestmentService::class),
             ),
             true
         );
@@ -125,7 +157,7 @@ class AppServiceProvider
         $container->bind(
             ShowInvestmentUseCase::class,
             fn($c) => new ShowInvestmentUseCase(
-                $c->getInstancia(\App\Contracts\InvestmentRepositoryInterface::class)
+                $c->getInstancia(ShowInvestmentService::class),
             ),
             true
         );
@@ -147,8 +179,6 @@ class AppServiceProvider
             true
         );
 
-        
-
         $container->bind(CalculateController::class, fn($c) => new CalculateController(
             $c->getInstancia(InvestmentInputFactory::class),
             $c->getInstancia(CalculateInvestmentUseCase::class),
@@ -160,8 +190,6 @@ class AppServiceProvider
         $container->bind(InvestmentResultController::class, fn($c) => new InvestmentResultController(
             $c->getInstancia(InvestmentPresenter::class)
         ), true);
-
-        
 
         $container->bind(
             ListInvestmentsController::class,
@@ -237,6 +265,5 @@ class AppServiceProvider
             ),
             true
         );
-
     }
 }

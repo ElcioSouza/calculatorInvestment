@@ -8,7 +8,7 @@ use App\Core\AppServiceProvider;
 
 Config::load(__DIR__);
 
-date_default_timezone_set(Config::getString('APP_TIMEZONE', 'America/Sao_Paulo'));
+date_default_timezone_set(Config::timezone());
 
 function init(){
     $container = Container::getContainer();

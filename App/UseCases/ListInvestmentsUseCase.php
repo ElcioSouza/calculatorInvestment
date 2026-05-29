@@ -2,14 +2,16 @@
 
 namespace App\UseCases;
 
-use App\Contracts\InvestmentRepositoryInterface;
+use App\Services\ListInvestmentService;
 
 class ListInvestmentsUseCase
 {
-    public function __construct(private InvestmentRepositoryInterface $repository) {}
+    public function __construct(
+        private ListInvestmentService $service,
+    ) {}
 
     public function execute(): array
     {
-        return $this->repository->all();
+        return $this->service->execute();
     }
 }
