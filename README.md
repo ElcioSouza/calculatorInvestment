@@ -79,44 +79,41 @@ O schema (`sql/calculator_investment.sql`) define 4 tabelas:
 | `id` | INT AUTO_INCREMENT PK | ID único |
 | `investment_type` | ENUM('cdb','lci','lca') | Tipo de investimento |
 | `rate_type` | ENUM('pre','pos') | Tipo de taxa |
-| `capital` | DECIMAL(15,2) | Capital inicial |
+| `initial_capital` | DECIMAL(16,2) | Capital inicial |
 | `cdi_percentage` | DECIMAL(8,2) | Percentual do CDI |
 | `months` | INT | Prazo em meses |
 | `application_date` | DATE | Data de aplicação |
 | `redemption_date` | DATE | Data de resgate |
-| `pre_fixed_annual_rate` | DECIMAL(8,2) | Taxa pré-fixada anual |
-| `cdi_annual` | VARCHAR(20) | Taxa CDI anual obtida do BCB |
+| `pre_fixed_annual_rate` | DECIMAL(8,4) | Taxa pré-fixada anual |
 | `selic_meta` | DECIMAL(8,2) | Taxa Selic Meta |
-| `amount_bruto` | DECIMAL(15,2) | Montante bruto final |
-| `profit_bruto` | DECIMAL(15,2) | Lucro bruto |
-| `amount_liquid` | DECIMAL(15,2) | Montante líquido final |
-| `profit_liquid` | DECIMAL(15,2) | Lucro líquido |
+| `selic_is_over` | TINYINT(1) | Se a Selic informada já é Over |
+| `cdi_over` | VARCHAR(20) | Taxa CDI Over anual |
+| `is_isento` | TINYINT(1) | GENERATED ALWAYS AS (investment_type != 'cdb') |
 | `created_at` | TIMESTAMP | Data de criação |
+| `updated_at` | TIMESTAMP | Data de atualização |
 
 **`investment_estimate`:**
 
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|
 | `id` | INT AUTO_INCREMENT PK | ID único |
-| `investment_id` | INT FK → investments.id | Investimento pai |
-| `display_day` | INT | Dia útil da projeção |
-| `date` | DATE | Data do dia útil |
-| `gross_amount` | DECIMAL(15,2) | Montante bruto no dia |
-| `gross_profit` | DECIMAL(15,2) | Lucro bruto acumulado |
-| `iof` | DECIMAL(15,2) | IOF calculado |
-| `ir` | DECIMAL(15,2) | IR calculado |
-| `iof_percentage` | DECIMAL(5,2) | Alíquota de IOF |
-| `ir_percentage` | DECIMAL(5,2) | Alíquota de IR |
-| `liquid_amount` | DECIMAL(15,2) | Montante líquido |
-| `liquid_profit` | DECIMAL(15,2) | Lucro líquido |
+| `investment_id` | INT FK → investments.id (UNIQUE, ON DELETE CASCADE) | Investimento pai |
+| `amount_bruto` | DECIMAL(16,2) | Montante bruto final |
+| `amount_liquid` | DECIMAL(16,2) | Montante líquido final |
+| `profit_bruto` | DECIMAL(16,2) | Lucro bruto |
+| `profit_liquid` | DECIMAL(16,2) | Lucro líquido |
+| `iof_value` | DECIMAL(16,2) | IOF calculado |
+| `ir_tax_amount` | DECIMAL(16,2) | IR calculado |
+| `monthly_profit_liquid` | DECIMAL(16,2) | Lucro líquido mensal |
+| `daily_profit_display` | DECIMAL(16,2) | Lucro líquido diário |
+| `is_isento` | TINYINT(1) | Investimento isento (LCI/LCA) |
+| `days` | INT | Dias corridos |
+| `business_days` | INT | Dias úteis |
+| `created_at` | TIMESTAMP | Data de criação |
 
-### Script de migração
+### Nota sobre migração
 
-Caso o schema já exista e precise ser sincronizado:
-
-```bash
-php migrate.php
-```
+O schema SQL é aplicado apenas uma vez via `mysql < sql/calculator_investment.sql`. Não há script de migração incremental — em caso de alterações, edite o schema diretamente e reimporte.
 
 ---
 
@@ -140,7 +137,7 @@ Escolha o tipo de investimento (1, 2, 3) [1]:
 Também é possível passar argumentos via linha de comando:
 
 ```bash
-php index.php --tipo=1 --taxa=2 --aplicacao=2026-01-01 --meses=6 --capital=10000 --percentual=110 --selic=14.25
+php index.php --investment-type=1 --rate-type=2 --application-date=2026-01-01 --months=6 --capital=10000 --cdi=110 --selic-meta=14.25
 ```
 
 ### API REST (modo HTTP)
@@ -156,8 +153,9 @@ php -S localhost:8000
 | Método | Rota | Descrição |
 |--------|------|-----------|
 | `GET` | `/api/calculate` | **Lista todos** os investimentos cadastrados |
-| `GET` | `/api/calculate?investment_type=cdb&rate_type=pos&capital=10000&cdi=110&application_date=2026-01-01&months=6` | **Cadastra** novo investimento via query string (retorna ID) |
-| `POST` | `/api/calculate` | **Cadastra** novo investimento via body JSON (retorna ID) |
+| `GET` | `/api/calculate?investment_type=cdb&rate_type=pos&capital=10000&cdi=110&application_date=2026-01-01&months=6` | **Calcula estimativa** (sem persistência) via query string |
+| `GET` | `/api/calculate?id=1` | **Busca** investimento por ID (atalho para `/api/calculate/1`) |
+| `POST` | `/api/calculate` | **Cadastra** novo investimento via body JSON (persiste e retorna ID) |
 | `GET` | `/api/calculate/{id}` | **Busca** investimento por ID |
 | `PUT` | `/api/calculate/{id}` | **Atualiza/Recalcula** substituindo registro existente |
 | `DELETE` | `/api/calculate/{id}` | **Remove** registro por ID |
@@ -179,17 +177,19 @@ curl -X POST http://localhost:8000/api/calculate \
 
 ### Opções CLI / Parâmetros da API
 
-| Parâmetro | Descrição | Valores |
-|-----------|-----------|---------|
-| `investment_type` | Tipo de investimento | `cdb`, `lci`, `lca` |
-| `rate_type` | Tipo de taxa | `pre` (pré-fixado), `pos` (pós-fixado) |
-| `application_date` | Data de aplicação | `YYYY-MM-DD` |
-| `months` | Prazo em meses | Número inteiro positivo |
-| `capital` | Capital inicial | Número decimal positivo |
-| `cdi` | Percentual do CDI (pós) | Ex: `110` = 110% do CDI |
-| `pre_rate` | Taxa pré-fixada anual (pré) | Ex: `11.50` = 11,50% ao ano |
-| `selic_meta` | Taxa Selic Meta | Ex: `14.40` |
-| `cdi_annual` | Taxa CDI anual manual (opcional) | Ex: `13.65` |
+> **Nota sobre nomenclatura:** Na CLI, use `--investment-type` (hífen). Na API, use `investment_type` (underscore).
+
+| Parâmetro (API) | Parâmetro (CLI) | Descrição | Valores |
+|------------------|------------------|-----------|---------|
+| `investment_type` | `--investment-type` | Tipo de investimento | `cdb`, `lci`, `lca` |
+| `rate_type` | `--rate-type` | Tipo de taxa | `pre` (pré-fixado), `pos` (pós-fixado) |
+| `application_date` | `--application-date` | Data de aplicação | `YYYY-MM-DD` |
+| `months` | `--months` | Prazo em meses | Número inteiro positivo |
+| `capital` | `--capital` | Capital inicial | Número decimal positivo |
+| `cdi` | `--cdi` | Percentual do CDI (pós) | Ex: `110` = 110% do CDI |
+| `pre_rate` | `--pre-rate` | Taxa pré-fixada anual (pré) | Ex: `11.50` = 11,50% ao ano |
+| `selic_meta` | `--selic-meta` | Taxa Selic Meta | Ex: `14.40` |
+| `cdi_annual` | `--cdi-annual` | Taxa CDI anual manual (opcional) | Ex: `13.65` |
 
 ---
 
@@ -418,23 +418,29 @@ HttpApplication (roteamento)
    |                    +--> ShowInvestmentRepository (MySQL - tenta primeiro)
    |                    +--> JsonFileInvestmentRepository (fallback se MySQL falhar)
    |
-  +--> GET|POST /api/calculate (com params de investimento)
-  |      +--> CreateInvestmentController::execute()
-  |             +--> HttpInputFactory::create()  (converte JSON em InvestmentInput)
-  |             |      +--> CdiRateService::fetchCdiAnnual()
-  |             +--> CalculateInvestmentUseCase::execute() → retorna Investment
-  |             |      +--> InvestmentService::handle()
-  |             |             +--> CreateInvestmentRepository::insertInvestment()  → INSERT na tabela `investments` (gera ID no MySQL)
-  |             |             +--> CreateInvestmentRepository::insertEstimate()    → INSERT na tabela `investment_estimate`
-  |             |             +--> JsonFileInvestmentRepository::save()            → salva no JSON usando o mesmo ID do MySQL
-  |             +--> CalculateInvestmentUseCase::getLastId() → retorna o ID gerado (MySQL)
+   +--> GET /api/calculate (com params de investimento — estimativa sem persistência)
+   |      +--> CalculateInvestmentEstimateController::execute()
+   |             +--> HttpInputFactory::create()  (converte JSON em InvestmentInput)
+   |             |      +--> CdiRateService::fetchCdiAnnual()
+   |             +--> CalculateInvestmentUseCase::recalculate() → retorna Investment (sem persistir)
+   |
+   +--> POST /api/calculate (com params de investimento — persiste)
+   |      +--> CreateInvestmentController::execute()
+   |             +--> HttpInputFactory::create()  (converte JSON em InvestmentInput)
+   |             |      +--> CdiRateService::fetchCdiAnnual()
+   |             +--> CalculateInvestmentUseCase::execute() → retorna Investment
+   |             |      +--> InvestmentService::handle()
+   |             |             +--> CreateInvestmentRepository::insertInvestment()  → INSERT na tabela `investments` (gera ID no MySQL)
+   |             |             +--> CreateInvestmentRepository::insertEstimate()    → INSERT na tabela `investment_estimate`
+   |             |             +--> JsonFileInvestmentRepository::save()            → salva no JSON usando o mesmo ID do MySQL
+   |             +--> CalculateInvestmentUseCase::getLastId() → retorna o ID gerado (MySQL)
   |
   +--> PUT /api/calculate/{id}
    |      +--> UpdateInvestmentController::execute()
    |             +--> ShowInvestmentUseCase::execute() (busca existente)
    |             |      +--> ShowInvestmentService (fallback: MySQL → JSON)
    |             +--> HttpInputFactory::inputToParams() + create() (merge de dados)
-   |             +--> CalculateInvestmentUseCase::recalculateAndUpdate() → recalcula + persiste
+   |             +--> CalculateInvestmentUseCase::recalculateUpdate() → recalcula + persiste
   |
   +--> DELETE /api/calculate/{id}
          +--> DeleteInvestmentController::execute()
@@ -544,20 +550,20 @@ Onde $$a_{dias}$$ é a alíquota regressiva:
 | Dia | Alíquota | Dia | Alíquota |
 |-----|----------|-----|----------|
 | 1 | 96% | 2 | 93% |
-| 3 | 90% | 4 | 87% |
-| 5 | 84% | 6 | 81% |
-| 7 | 78% | 8 | 75% |
-| 9 | 72% | 10 | 69% |
-| 11 | 66% | 12 | 63% |
-| 13 | 60% | 14 | 57% |
-| 15 | 54% | 16 | 51% |
-| 17 | 48% | 18 | 45% |
-| 19 | 42% | 20 | 39% |
-| 21 | 36% | 22 | 33% |
-| 23 | 30% | 24 | 27% |
-| 25 | 24% | 26 | 21% |
-| 27 | 18% | 28 | 15% |
-| 29 | 12% | 30 | 9% |
+| 3 | 90% | 4 | 86% |
+| 5 | 83% | 6 | 80% |
+| 7 | 76% | 8 | 73% |
+| 9 | 70% | 10 | 66% |
+| 11 | 63% | 12 | 60% |
+| 13 | 56% | 14 | 53% |
+| 15 | 50% | 16 | 46% |
+| 17 | 43% | 18 | 40% |
+| 19 | 36% | 20 | 33% |
+| 21 | 30% | 22 | 26% |
+| 23 | 23% | 24 | 20% |
+| 25 | 16% | 26 | 13% |
+| 27 | 10% | 28 | 6% |
+| 29 | 3% | 30 | 0% |
 
 Se $$dias > 30$$: $$IOF = 0$$
 
@@ -677,8 +683,9 @@ $$
 
 | Série | Endpoint | Descrição | Uso |
 |-------|----------|-----------|-----|
-| **12** | `https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados/ultimos/5?formato=json` | CDI diário (% ao dia) | Fonte primária. Validado como $$0 < valor < 1$$ (percentual diário) e anualizado via $$(1 + taxaDiaria/100)^{252} - 1$$ |
-| **4390** | `https://api.bcb.gov.br/dados/serie/bcdata.sgs.4390/dados/ultimos/5?formato=json` | CDI mensal/acumulado | Fallback. Se $$valor > 5$$, tratado como taxa anual; senão, mensal → anualizado via $$(1 + valor/100)^{12} - 1$$ |
+| **12** | `https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados/ultimos/5?formato=json` | CDI diário (% ao dia) | Fonte primária CDI. Validado como $$0 < valor < 1$$ (percentual diário) e anualizado via $$(1 + taxaDiaria/100)^{252} - 1$$ |
+| **4390** | `https://api.bcb.gov.br/dados/serie/bcdata.sgs.4390/dados/ultimos/5?formato=json` | CDI mensal/acumulado | Fallback CDI. Se $$valor > 5$$, tratado como taxa anual; senão, mensal → anualizado via $$(1 + valor/100)^{12} - 1$$ |
+| **11** | `https://api.bcb.gov.br/dados/serie/bcdata.sgs.11/dados/ultimos/5?formato=json` | Selic Over diária (% ao dia) | Usada por `CdiRateService::fetchSelicAnnual()` como valor padrão de Selic Meta em requisições API. Anualizada via $$(1 + d/100)^{252} - 1$$ |
 
 ### Fallback Offline
 
@@ -720,7 +727,10 @@ calculatorInvestment/
 ├── bootstrap.php                          # Autoload, Container, AppServiceProvider
 ├── index.php                              # Entry point (CLI + HTTP)
 ├── composer.json
-├── htaccess                               # Apache rewrite rules
+├── composer.lock
+├── .htaccess                              # Apache rewrite rules
+├── data/
+│   └── investments.json                   # Persistência JSON (gerado automaticamente)
 ├── sql/
 │   └── calculator_investment.sql          # Schema MySQL (4 tabelas + indexes)
 ├── App/
@@ -744,6 +754,7 @@ calculatorInvestment/
 │   │   ├── BaseApiController.php          # Controller base (JSON response, buildPayload)
 │   │   ├── CreateInvestmentController.php # Cria investimento (JSON + MySQL)
 │   │   ├── ListInvestmentsController.php  # Lista todos
+│   │   ├── CalculateInvestmentEstimateController.php # Calcula estimativa sem persistir (GET)
 │   │   ├── ShowInvestmentController.php   # Busca por ID
 │   │   ├── UpdateInvestmentController.php # Atualiza por ID
 │   │   └── DeleteInvestmentController.php # Deleta por ID
@@ -918,22 +929,32 @@ Repositório MySQL para busca de investimento por ID. Mesma estrutura JOIN que `
 
 ### App\Repositories\CreateInvestmentRepository
 
-Repositório de persistência MySQL focado exclusivamente na rota `POST /api/calculate`. Não implementa `InvestmentRepositoryInterface` — possui métodos de única responsabilidade, cada um executando um único INSERT.
+Repositório de persistência MySQL focado nas rotas `POST /api/calculate` e `PUT /api/calculate/{id}`. Não implementa `InvestmentRepositoryInterface` — possui métodos de única responsabilidade, cada um executando um único INSERT ou UPDATE.
 
-#### `insertInvestment(array $data): int`
-- **Descrição:** Insere um registro na tabela `investments` com os dados do investimento calculado.
+#### `insertInvestment(array $input): int`
+- **Descrição:** Insere um registro na tabela `investments` com os dados do investimento.
 - **Parâmetros:**
-  - `$data` (`array`) — Dados do investimento: `investment_type`, `rate_type`, `capital`, `cdi_percentage`, `months`, `application_date`, `redemption_date`, `pre_fixed_annual_rate`, `cdi_annual`, `selic_meta`, `amount_bruto`, `profit_bruto`, `amount_liquid`, `profit_liquid`.
+  - `$input` (`array`) — Dados: `initial_capital`, `investment_type`, `rate_type`, `cdi_percentage`, `selic_meta`, `pre_fixed_annual_rate`, `application_date`, `redemption_date`, `months`, `selic_is_over`, `cdi_over`.
 - **Retorno:** `int` — O ID auto-incremental gerado.
 - **Exceções:** `\PDOException` em caso de erro de inserção.
 
-#### `insertEstimate(int $investmentId, array $estimate): int`
-- **Descrição:** Insere um registro na tabela `investment_estimate` com a projeção diária de um dia útil do investimento.
+#### `insertEstimate(int $investmentId, array $result): void`
+- **Descrição:** Insere um registro na tabela `investment_estimate` com o resultado consolidado do investimento.
 - **Parâmetros:**
-  - `$investmentId` (`int`) — ID do investimento pai (FK `investments.id`).
-  - `$estimate` (`array`) — Dados da estimativa diária: `display_day`, `date`, `gross_amount`, `gross_profit`, `iof`, `ir`, `iof_percentage`, `ir_percentage`, `liquid_amount`, `liquid_profit`.
-- **Retorno:** `int` — O ID gerado.
-- **Exceções:** `\PDOException` em caso de erro de inserção.
+  - `$investmentId` (`int`) — ID do investimento pai (FK `investments.id`, UNIQUE).
+  - `$result` (`array`) — Dados: `amount_bruto`, `amount_liquid`, `profit_bruto`, `profit_liquid`, `iof_value`, `ir_tax_amount`, `monthly_profit_liquid`, `daily_profit_display`, `is_isento`, `days`, `business_days`.
+
+#### `updateInvestment(int $id, array $input): void`
+- **Descrição:** Atualiza um registro existente na tabela `investments`.
+- **Parâmetros:**
+  - `$id` (`int`) — ID do investimento.
+  - `$input` (`array`) — Mesmos campos do `insertInvestment`.
+
+#### `updateEstimate(int $investmentId, array $result): void`
+- **Descrição:** Atualiza o registro na tabela `investment_estimate` para um investimento existente.
+- **Parâmetros:**
+  - `$investmentId` (`int`) — ID do investimento pai.
+  - `$result` (`array`) — Mesmos campos do `insertEstimate`.
 
 ---
 
@@ -1246,6 +1267,13 @@ Serviço de obtenção da taxa CDI do Banco Central do Brasil com fallback.
   - `$spreadFallback` (`string`, default `'-0.10'`) — Spread para fallback.
 - **Retorno:** `array` — `['rate' => string, 'source' => string]`, onde `source` é `'bcb_daily'`, `'bcb_monthly'` ou `'fallback'`.
 
+#### `fetchSelicAnnual(?string $fallback = null): ?string`
+- **Descrição:** Obtém a taxa Selic anualizada a partir da série 11 (Selic diária) da API do BCB.
+- **Relação BCB:** Série 11 do SGS — taxa Selic Over diária. Anualizada via $$(1 + d/100)^{252} - 1$$.
+- **Parâmetros:**
+  - `$fallback` (`?string`, default `null`) — Valor de fallback se a API falhar.
+- **Retorno:** `?string` — Taxa Selic anual em percentual ou `$fallback` se indisponível.
+
 #### `fallback(string $selicMeta, string $spread, string $reason): array`
 - **Descrição:** Calcula CDI via fallback offline quando a API do BCB está indisponível.
 - **Fórmula:** $$CDI = Selic Meta + spread$$
@@ -1418,6 +1446,12 @@ Serviço central que orquestra todo o cálculo do investimento.
   - `$input` (`InvestmentInput`) — Dados de entrada.
 - **Retorno:** `Investment`
 
+#### `recalculate(InvestmentInput $input): Investment`
+- **Descrição:** Recalcula o investimento executando `process()` sem persistir em nenhum repositório. Usado pelo fluxo de estimativa (`GET /api/calculate?params...`).
+- **Parâmetros:**
+  - `$input` (`InvestmentInput`) — Dados de entrada.
+- **Retorno:** `Investment`
+
 #### `getLastSavedId(): ?int`
 - **Descrição:** Retorna o ID do último investimento salvo via `handle()` (mesmo valor de `getLastId()`).
 - **Retorno:** `?int`
@@ -1426,7 +1460,7 @@ Serviço central que orquestra todo o cálculo do investimento.
 - **Descrição:** Retorna o ID gerado pelo MySQL na última execução de `handle()`.
 - **Retorno:** `?int`
 
-#### `recalculateAndUpdate(int|string $id, InvestmentInput $input): Investment`
+#### `recalculateUpdate(int|string $id, InvestmentInput $input): Investment`
 - **Descrição:** Recalcula o investimento (`process()`) e persiste a atualização no repositório. Usado pelo fluxo de update.
 - **Parâmetros:**
   - `$id` (`int|string`) — ID do investimento a atualizar.
@@ -1484,13 +1518,14 @@ Gera relatório diário detalhado de simulação (período de IOF).
 - **Relação BCB:** Simula a incidência diária de IOF conforme tabela regressiva do BCB.
 - **Exemplo de saída:**
   ```
-  ==========================================
-    Simulacao diaria (periodo de cobranca do IOF)
-  ==========================================
-  Data         Dias DU   %Mes Bruto(R$)  Lucro(R$) IOF(R$) Liquido(R$)
-  05-01-2026     0   0   0%  10.000,00      0,00     0,00     0,00
-  06-01-2026     1   1   3%  10.005,55      5,55     5,33     5,55
-  07-01-2026     2   2   7%  10.011,11     11,11    10,33    11,11
+  ========================================================================================================
+                Simulação diária (período de cobrança do IOF)
+  ========================================================================================================
+  Data           Dias  Dias Úteis      % Mês        Bruto    Lucro Bruto          IOF    Lucro Líq.
+  --------------------------------------------------------------------------------------------------------
+  05/01/2026        0           0       0,00%     10.000,00          0,00         0,00          0,00
+  06/01/2026        1           1       3,33%     10.005,55          5,55         5,33          0,22
+  07/01/2026        2           2       6,67%     10.011,11         11,11        10,33          0,78
   ...
   ```
 - **Parâmetros:**
@@ -1580,6 +1615,20 @@ Classe base para factories com validação de dados e feriados brasileiros.
 - **Parâmetros:**
   - `$message` (`string`) — Mensagem do prompt.
   - `$default` (`string`) — Valor padrão.
+
+#### `askValidBusinessDay(string $message, string $default): string`
+- **Descrição:** Solicita data interativamente, validando se é dia útil (seg-sex, não feriado).
+- **Relação BCB:** Feriados conforme calendário do Banco Central.
+- **Parâmetros:**
+  - `$message` (`string`) — Mensagem do prompt.
+  - `$default` (`string`) — Valor padrão.
+
+#### `ensureIsBusinessDay(string $date, string $label = 'Data de aplicação'): void`
+- **Descrição:** Valida se a data é dia útil. Lança `\InvalidArgumentException` se cair em fim de semana ou feriado.
+- **Relação BCB:** Calendário de feriados brasileiros conforme BCB.
+- **Parâmetros:**
+  - `$date` (`string`) — Data no formato `Y-m-d`.
+  - `$label` (`string`) — Rótulo para mensagem de erro.
 
 #### `askPositiveNumber(string $message, string $default, string $label): string`
 - **Descrição:** Solicita número positivo interativamente.
@@ -1717,6 +1766,19 @@ Classe base para apresentação dos resultados.
 
 ---
 
+### App\Controllers\CalculateInvestmentEstimateController
+
+Controller da API REST que calcula estimativa sem persistência (usado por `GET /api/calculate?params...`).
+
+#### `execute(array $params): mixed`
+- **Descrição:** Recebe parâmetros de investimento via query string, cria `InvestmentInput` via `HttpInputFactory`, executa `CalculateInvestmentUseCase::recalculate()` (sem persistir) e retorna JSON com input + resultado.
+- **Parâmetros:**
+  - `$params` (`array`) — Parâmetros da requisição (`investment_type`, `rate_type`, `capital`, `application_date`, `months`, etc.).
+- **Retorno:** `mixed` — `null` (resposta JSON enviada diretamente).
+- **Códigos HTTP:** `200` sucesso, `422` dados inválidos, `500` erro interno.
+
+---
+
 ### App\Controllers\CalculateController
 
 #### `execute(array $argv): array`
@@ -1781,7 +1843,7 @@ Orquestrador principal da aplicação CLI.
   - `$input` (`InvestmentInput`) — Dados de entrada.
 - **Retorno:** `Investment`
 
-#### `recalculateAndUpdate(int|string $id, InvestmentInput $input): Investment`
+#### `recalculateUpdate(int|string $id, InvestmentInput $input): Investment`
 - **Descrição:** Recalcula e persiste a atualização no repositório. Usado pelo fluxo de update.
 - **Parâmetros:**
   - `$id` (`int|string`) — ID do investimento a atualizar.
