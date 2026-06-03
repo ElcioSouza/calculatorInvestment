@@ -15,6 +15,7 @@ final class InvestmentInputFactory extends BaseFactory
     {
         $defaultDate = (new \DateTime())->format('Y-m-d');
         $defaultSelic ??= $this->cdiRateService->fetchSelicAnnual('14.40');
+        $displaySelic = number_format((float) $defaultSelic, 2, '.', '');
 
         $investmentType = ConsoleInput::option($argv, 'investment-type', '');
         $investmentType = $investmentType !== ''
@@ -79,7 +80,7 @@ final class InvestmentInputFactory extends BaseFactory
             $selicMeta = ConsoleInput::option($argv, 'selic-meta', '');
             $selicMeta = $selicMeta !== ''
                 ? $this->normalizePositiveNumberOrFail(trim($selicMeta), 'Selic Meta')
-                : $this->askPositiveNumber("Selic Meta [{$defaultSelic}]: ", $defaultSelic, 'Selic Meta');
+                : $this->askPositiveNumber("Selic Meta [{$displaySelic}]: ", $defaultSelic, 'Selic Meta');
         }
 
         $cdiOver   = '';
