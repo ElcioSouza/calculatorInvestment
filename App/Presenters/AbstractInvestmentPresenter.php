@@ -102,7 +102,7 @@ abstract class AbstractInvestmentPresenter
         printf(
             $mNormal,
             'Lucro Líquido por dia:',
-            $money($result->days > 0 ? bcdiv($result->profitLiquid, (string) $result->days, 2) : '0.00')
+            $money($result->businessDays > 0 ? bcdiv($result->profitLiquid, (string) $result->businessDays, 2) : '0.00')
         );
 
         echo str_repeat('-', $this->width) . "\n";
