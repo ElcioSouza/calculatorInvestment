@@ -103,12 +103,25 @@ abstract class BaseFactory
         return $normalized;
     }
 
+    private function getDayNamePt(\DateTimeImmutable $dt): string
+    {
+        return match ((int) $dt->format('N')) {
+            1 => 'segunda-feira',
+            2 => 'terça-feira',
+            3 => 'quarta-feira',
+            4 => 'quinta-feira',
+            5 => 'sexta-feira',
+            6 => 'sábado',
+            7 => 'domingo',
+        };
+    }
+
     protected function ensureIsBusinessDay(string $date, string $label = 'Data de aplicação'): void
     {
-        $dt = new \DateTimeImmutable($date);
+        $dt = new \DateTimeImmutable($date, new \DateTimeZone('America/Sao_Paulo'));
         if ($this->isWeekendOrHoliday($dt)) {
             throw new \InvalidArgumentException(
-                "{$label} deve ser um dia útil ({$dt->format('d/m/Y')} caiu em {$dt->format('l')} ou é feriado)."
+                "{$label} deve ser um dia útil ({$dt->format('d/m/Y')} caiu em {$this->getDayNamePt($dt)} ou é feriado)."
             );
         }
     }
