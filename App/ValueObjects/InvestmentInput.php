@@ -18,6 +18,7 @@ final class InvestmentInput
         public readonly int    $months,
         public readonly bool   $selicIsOver = false,
         public readonly string $cdiOver = '',
+        public readonly string $selicMetaDefault = '',
     ) {
         $this->isIsento = strtoupper($this->investmentType) !== 'CDB';
     }

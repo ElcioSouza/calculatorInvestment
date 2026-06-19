@@ -14,7 +14,8 @@ final class InvestmentInputFactory extends BaseFactory
     public function create(array $argv, ?string $defaultSelic = null): InvestmentInput
     {
         $defaultDate = (new \DateTime())->format('Y-m-d');
-        $defaultSelic ??= $this->cdiRateService->fetchSelicAnnual('14.40');
+        $defaultSelic ??= $this->cdiRateService->fetchSelicAnnual();
+        $selicMetaDefault = $defaultSelic;
         $displaySelic = number_format((float) $defaultSelic, 2, '.', '');
 
         $investmentType = ConsoleInput::option($argv, 'investment-type', '');
@@ -87,8 +88,6 @@ final class InvestmentInputFactory extends BaseFactory
         $manualCdiAnnual = ConsoleInput::option($argv, 'cdi-annual', '');
         if ($manualCdiAnnual !== '') {
             $cdiOver = $this->normalizePositiveNumberOrFail(trim($manualCdiAnnual), 'CDI anual manual');
-        } elseif ($selicMeta !== $defaultSelic) {
-            $cdiOver = $selicMeta;
         } else {
             $cdiResult = $this->cdiRateService->fetchCdiAnnual($selicMeta);
             $cdiOver   = $cdiResult['rate'];
@@ -100,6 +99,7 @@ final class InvestmentInputFactory extends BaseFactory
             rateType:           $rateType,
             cdiPercentage:      $cdiPercentage,
             selicMeta:          $selicMeta,
+            selicMetaDefault:   $selicMetaDefault,
             preFixedAnnualRate: $preFixedAnnualRate,
             selicIsOver:        false,
             applicationDate:    $applicationDate,

@@ -15,11 +15,11 @@ class CreateInvestmentRepository
         $stmt = $this->pdo->prepare(
             "INSERT INTO investments
                 (initial_capital, investment_type, rate_type, cdi_percentage,
-                 selic_meta, pre_fixed_annual_rate, application_date,
+                 selic_meta, selic_meta_default, pre_fixed_annual_rate, application_date,
                  redemption_date, months, selic_is_over, cdi_over)
              VALUES
                 (:initial_capital, :investment_type, :rate_type, :cdi_percentage,
-                 :selic_meta, :pre_fixed_annual_rate, :application_date,
+                 :selic_meta, :selic_meta_default, :pre_fixed_annual_rate, :application_date,
                  :redemption_date, :months, :selic_is_over, :cdi_over)"
         );
 
@@ -29,6 +29,7 @@ class CreateInvestmentRepository
             ':rate_type'             => strtolower($input['rate_type']),
             ':cdi_percentage'        => $input['cdi_percentage'],
             ':selic_meta'            => $input['selic_meta'],
+            ':selic_meta_default'    => $input['selic_meta_default'] ?? $input['selic_meta'],
             ':pre_fixed_annual_rate' => $input['pre_fixed_annual_rate'],
             ':application_date'      => $input['application_date'],
             ':redemption_date'       => $input['redemption_date'],
@@ -49,6 +50,7 @@ class CreateInvestmentRepository
                 rate_type = :rate_type,
                 cdi_percentage = :cdi_percentage,
                 selic_meta = :selic_meta,
+                selic_meta_default = :selic_meta_default,
                 pre_fixed_annual_rate = :pre_fixed_annual_rate,
                 application_date = :application_date,
                 redemption_date = :redemption_date,
@@ -65,6 +67,7 @@ class CreateInvestmentRepository
             ':rate_type'             => strtolower($input['rate_type']),
             ':cdi_percentage'        => $input['cdi_percentage'],
             ':selic_meta'            => $input['selic_meta'],
+            ':selic_meta_default'    => $input['selic_meta_default'] ?? $input['selic_meta'],
             ':pre_fixed_annual_rate' => $input['pre_fixed_annual_rate'],
             ':application_date'      => $input['application_date'],
             ':redemption_date'       => $input['redemption_date'],

@@ -50,7 +50,9 @@ class AppServiceProvider
 
         $container->bind(AmountFormatterService::class, fn() => new AmountFormatterService(), true);
         $container->bind(BusinessDayService::class, fn() => new BusinessDayService(), true);
-        $container->bind(CdiRateService::class, fn() => new CdiRateService(), true);
+        $container->bind(CdiRateService::class, fn() => new CdiRateService(
+            pdo: Database::getConnection()
+        ), true);
         $container->bind(InvestmentCalculation::class, fn() => new DefaultInvestmentCalculation(), true);
         $container->bind(RateCalculationService::class, fn() => new RateCalculationService(), true);
         $container->bind(TaxCalculationService::class, fn() => new TaxCalculationService(), true);

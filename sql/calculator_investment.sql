@@ -11,6 +11,7 @@ CREATE TABLE investments (
     rate_type ENUM('pre', 'pos') NOT NULL,
     cdi_percentage DECIMAL(8,2) NOT NULL DEFAULT 0,
     selic_meta DECIMAL(8,2) NOT NULL DEFAULT 0,
+    selic_meta_default DECIMAL(8,2) NOT NULL DEFAULT 0,
     pre_fixed_annual_rate DECIMAL(8,4) NOT NULL DEFAULT 0,
     application_date DATE NOT NULL,
     redemption_date DATE NOT NULL,

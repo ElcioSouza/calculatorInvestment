@@ -188,7 +188,7 @@ curl -X POST http://localhost:8000/api/calculate \
 | `capital` | `--capital` | Capital inicial | Número decimal positivo |
 | `cdi` | `--cdi` | Percentual do CDI (pós) | Ex: `110` = 110% do CDI |
 | `pre_rate` | `--pre-rate` | Taxa pré-fixada anual (pré) | Ex: `11.50` = 11,50% ao ano |
-| `selic_meta` | `--selic-meta` | Taxa Selic Meta | Ex: `14.40` |
+| `selic_meta` | `--selic-meta` | Taxa Selic Meta | Ex: `14.25` |
 | `cdi_annual` | `--cdi-annual` | Taxa CDI anual manual (opcional) | Ex: `13.65` |
 
 ---
@@ -1075,7 +1075,7 @@ Interface para operações matemáticas de taxas.
 - **Exemplo:** Selic Meta = 14,25% → $$14,25 + 0,19335938 = 14,44335938\%$$
 - **Relação BCB:** A Selic Meta é definida pelo COPOM. A Selic Over é a taxa efetiva praticada no mercado. O spread converte uma na outra conforme aproximação do mercado.
 - **Parâmetros:**
-  - `$selicMeta` (`string`) — Taxa Selic Meta em percentual (ex: `"14.40"`).
+  - `$selicMeta` (`string`) — Taxa Selic Meta em percentual (ex: `"14.25"`).
   - `$isOver` (`bool`, default `false`) — Se `true`, retorna o próprio valor sem conversão.
   - `$spread` (`string`, default `'0.19335938'`) — Spread em pontos percentuais para conversão.
 - **Retorno:** `string` — Taxa Selic Over em percentual.
@@ -1263,18 +1263,22 @@ Serviço de obtenção da taxa CDI do Banco Central do Brasil com fallback.
   2. Se falhar, tenta série 4390 (CDI mensal) — se $$valor > 5$$ é taxa anual; senão, anualiza via $$(1 + valor/100)^{12} - 1$$
   3. Se ambas falharem, usa fallback offline: $$CDI = Selic Meta + spread$$
 - **Parâmetros:**
-  - `$selicMetaFallback` (`string`) — Taxa Selic Meta para fallback (ex: `"14.40"`).
+  - `$selicMetaFallback` (`string`) — Taxa Selic Meta para fallback (ex: `"14.25"`).
   - `$spreadFallback` (`string`, default `'-0.10'`) — Spread para fallback.
 - **Retorno:** `array` — `['rate' => string, 'source' => string]`, onde `source` é `'bcb_daily'`, `'bcb_monthly'` ou `'fallback'`.
 
-#### `fetchSelicAnnual(?string $fallback = null): ?string`
-- **Descrição:** Obtém a taxa Selic anualizada a partir da série 11 (Selic diária) da API do BCB.
-- **Relação BCB:** Série 11 do SGS — taxa Selic Over diária. Anualizada via $$(1 + d/100)^{252} - 1$$.
-- **Parâmetros:**
-  - `$fallback` (`?string`, default `null`) — Valor de fallback se a API falhar.
-- **Retorno:** `?string` — Taxa Selic anual em percentual ou `$fallback` se indisponível.
+#### `fetchSelicAnnual(): string`
+- **Descrição:** Obtém a taxa Selic anualizada. Tenta API BCB → banco de dados → `.env`.
+- **Fluxo:**
+  1. Tenta série 11 (Selic diária) da API BCB — anualiza via $$(1 + d/100)^{252} - 1$$ e salva no banco `selic_rates`
+  2. Se falhar, consulta última taxa armazenada no banco `selic_rates`
+  3. Se banco vazio, usa `DEFAULT_SELIC_META` do `.env`
+- **Retorno:** `string` — Taxa Selic anual em percentual.
 
-#### `fallback(string $selicMeta, string $spread, string $reason): array`
+#### `getDisplaySelic(): string`
+- **Descrição:** Retorna a taxa Selic formatada com 2 casas decimais para exibição.
+
+#### `fallbackCdi(string $selicMeta, string $spread, string $reason): array`
 - **Descrição:** Calcula CDI via fallback offline quando a API do BCB está indisponível.
 - **Fórmula:** $$CDI = Selic Meta + spread$$
 - **Relação BCB:** Aproximação do CDI Over a partir da Selic Meta definida pelo COPOM.

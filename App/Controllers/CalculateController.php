@@ -18,10 +18,9 @@ class CalculateController
 
     public function execute(array $argv): array
     {
-        $defaultSelic = $this->cdiRateService->fetchSelicAnnual('14.40');
-                  $displaySelic = $defaultSelic !== null
-            ? number_format((float) $defaultSelic, 2, '.', '')
-            : '14.40';
+        $defaultSelic = $this->cdiRateService->fetchSelicAnnual();
+        $displaySelic = number_format((float) $defaultSelic, 2, '.', '');
+
         ConsoleInput::showInvestmentDefaults($displaySelic);
 
         $investmentInput = $this->investmentInputFactory->create($argv, $defaultSelic);

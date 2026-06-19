@@ -121,4 +121,14 @@ class Config
     {
         return (string) self::env('BCB_SELIC_DAILY_URL');
     }
+
+    public static function bcbSelicMetaUrl(): string
+    {
+        return (string) self::env('BCB_SELIC_META_URL');
+    }
+
+    public static function defaultSelicMeta(): string
+    {
+        return (string) self::env('DEFAULT_SELIC_META', '14.25');
+    }
 }

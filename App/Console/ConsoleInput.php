@@ -81,7 +81,7 @@ final class ConsoleInput
         };
     }
 
-    public static function showInvestmentDefaults(string $selicDefault = '14.40'): void
+    public static function showInvestmentDefaults(string $selicDefault = ''): void
     {
         if (self::isInteractive()) {
             $defaultDate = (new \DateTime())->format('Y-m-d');

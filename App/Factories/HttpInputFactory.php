@@ -18,7 +18,8 @@ final class HttpInputFactory extends BaseFactory
         $params = $this->normalizeParamAliases($params);
 
         $defaultDate = (new \DateTime())->format('Y-m-d');
-        $defaultSelic = $this->cdiRateService->fetchSelicAnnual('14.40');
+        $defaultSelic = $this->cdiRateService->fetchSelicAnnual();
+        $selicMetaDefault = $defaultSelic;
 
         $investmentType = $this->getParam($params, 'investment_type', 'cdb');
         $investmentType = $this->normalizeInvestmentType($investmentType);
@@ -59,7 +60,8 @@ final class HttpInputFactory extends BaseFactory
         if ($manualCdiAnnual !== '') {
             $cdiOver = $this->normalizePositiveNumberOrFail(trim($manualCdiAnnual), 'CDI anual manual');
         } elseif (array_key_exists('selic_meta', $params)) {
-            $cdiOver = $this->rateCalculationService->convertSelicMetaToOver($selicMeta);
+            $spread = $this->cdiRateService->getSelicMetaToOverSpread();
+            $cdiOver = $this->rateCalculationService->convertSelicMetaToOver($selicMeta, false, $spread);
         } else {
             $cdiResult = $this->cdiRateService->fetchCdiAnnual($selicMeta);
             $cdiOver   = $cdiResult['rate'];
@@ -71,6 +73,7 @@ final class HttpInputFactory extends BaseFactory
             rateType: $rateType,
             cdiPercentage: $cdiPercentage,
             selicMeta: $selicMeta,
+            selicMetaDefault: $selicMetaDefault,
             preFixedAnnualRate: $preFixedAnnualRate,
             selicIsOver: false,
             applicationDate: $applicationDate,
@@ -121,7 +124,8 @@ final class HttpInputFactory extends BaseFactory
             'months'           => (string) $input->months,
             'capital'          => $input->initialCapital,
             'cdi'              => $input->cdiPercentage,
-            'selic_meta'       => $input->selicMeta,
+            'selic_meta'       => $input->selicMetaDefault !== '' ? $input->selicMetaDefault : $input->selicMeta,
+            'selic_meta_default' => $input->selicMetaDefault,
             'pre_rate'         => $input->preFixedAnnualRate,
             'cdi_annual'       => $input->cdiOver,
         ];
