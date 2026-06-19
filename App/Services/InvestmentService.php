@@ -60,6 +60,8 @@ class InvestmentService extends ServiceBase
             'is_isento'             => $result->isIsento,
             'days'                  => $result->days,
             'business_days'         => $result->businessDays,
+            'ir_aliquot'            => $result->irAliquot,
+            'profit_percentage'     => $result->profitPercentage,
         ]);
 
         $this->lastSavedId = $this->repository->save($input, $result, $this->lastId);
@@ -174,6 +176,20 @@ class InvestmentService extends ServiceBase
             bcsub(bcsub($profitBrutoRaw, $iofRaw, 6), $profitLiquid, 6)
         );
 
+        $irAliquot = $input->isIsento
+            ? '0'
+            : match (true) {
+                $days <= 180 => '22.5',
+                $days <= 360 => '20',
+                $days <= 720 => '17.5',
+                default      => '15',
+            };
+
+        $profitPercentageRaw = bccomp($input->initialCapital, '0', 6) > 0
+            ? bcmul(bcdiv($profitBrutoRaw, $input->initialCapital, 6), '1000', 6)
+            : '0';
+        $profitPercentage = number_format((float) $profitPercentageRaw, 2, '.', '');
+
         return new Investment(
             amountBruto: $amountBruto,
             amountLiquid: $amountLiquidNorm,
@@ -186,6 +202,8 @@ class InvestmentService extends ServiceBase
             isIsento: $input->isIsento,
             days: $days,
             businessDays: $businessDays,
+            irAliquot: $irAliquot,
+            profitPercentage: $profitPercentage,
         );
     }
     private function resolveDays(DateTimeImmutable $applicationDT, DateTimeImmutable $redemptionDT): int

@@ -37,6 +37,8 @@ CREATE TABLE investment_estimate (
     is_isento TINYINT(1) NOT NULL,
     days INT NOT NULL,
     business_days INT NOT NULL,
+    ir_aliquot DECIMAL(5,2) NOT NULL DEFAULT 0,
+    profit_percentage DECIMAL(10,6) NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_estimate_investment
         FOREIGN KEY (investment_id) REFERENCES investments(id)

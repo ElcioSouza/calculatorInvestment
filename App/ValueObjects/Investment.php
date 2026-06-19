@@ -16,5 +16,7 @@ final class Investment
         public readonly bool   $isIsento,
         public readonly int    $days,
         public readonly int    $businessDays,
+        public readonly string $irAliquot = '0',
+        public readonly string $profitPercentage = '0',
     ) {}
 }

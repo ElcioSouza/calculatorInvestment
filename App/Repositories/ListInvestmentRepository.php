@@ -38,7 +38,9 @@ class ListInvestmentRepository
                 e.daily_profit_display,
                 e.is_isento,
                 e.days,
-                e.business_days
+                e.business_days,
+                e.ir_aliquot,
+                e.profit_percentage
              FROM investments i
              LEFT JOIN investment_estimate e ON e.investment_id = i.id
              ORDER BY i.id DESC"
@@ -87,6 +89,8 @@ class ListInvestmentRepository
                 isIsento:             (bool) $row['is_isento'],
                 days:                 (int) $row['days'],
                 businessDays:         (int) $row['business_days'],
+                irAliquot:            (string) ($row['ir_aliquot'] ?? '0'),
+                profitPercentage:     (string) ($row['profit_percentage'] ?? '0'),
             ),
         ];
     }

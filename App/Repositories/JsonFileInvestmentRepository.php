@@ -160,6 +160,8 @@ class JsonFileInvestmentRepository implements InvestmentRepositoryInterface
             'isIsento'             => $result->isIsento,
             'days'                 => $result->days,
             'businessDays'         => $result->businessDays,
+            'irAliquot'            => $result->irAliquot,
+            'profitPercentage'     => $result->profitPercentage,
         ];
     }
 
@@ -194,6 +196,8 @@ class JsonFileInvestmentRepository implements InvestmentRepositoryInterface
             isIsento:             $arr['isIsento'] ?? false,
             days:                 $arr['days'] ?? 0,
             businessDays:         $arr['businessDays'] ?? 0,
+            irAliquot:            $arr['irAliquot'] ?? '0',
+            profitPercentage:     $arr['profitPercentage'] ?? '0',
         );
     }
 }

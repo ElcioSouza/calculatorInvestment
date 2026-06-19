@@ -91,7 +91,9 @@ class CreateInvestmentRepository
                 daily_profit_display = :daily_profit_display,
                 is_isento = :is_isento,
                 days = :days,
-                business_days = :business_days
+                business_days = :business_days,
+                ir_aliquot = :ir_aliquot,
+                profit_percentage = :profit_percentage
              WHERE investment_id = :investment_id"
         );
 
@@ -108,6 +110,8 @@ class CreateInvestmentRepository
             ':is_isento'             => $result['is_isento'] ? 1 : 0,
             ':days'                  => $result['days'],
             ':business_days'         => $result['business_days'],
+            ':ir_aliquot'            => $result['ir_aliquot'],
+            ':profit_percentage'     => $result['profit_percentage'],
         ]);
     }
 
@@ -118,12 +122,12 @@ class CreateInvestmentRepository
                 (investment_id, amount_bruto, amount_liquid, profit_bruto,
                  profit_liquid, iof_value, ir_tax_amount,
                  monthly_profit_liquid, daily_profit_display,
-                 is_isento, days, business_days)
+                 is_isento, days, business_days, ir_aliquot, profit_percentage)
              VALUES
                 (:investment_id, :amount_bruto, :amount_liquid, :profit_bruto,
                  :profit_liquid, :iof_value, :ir_tax_amount,
                  :monthly_profit_liquid, :daily_profit_display,
-                 :is_isento, :days, :business_days)"
+                 :is_isento, :days, :business_days, :ir_aliquot, :profit_percentage)"
         );
 
         $stmt->execute([
@@ -139,6 +143,8 @@ class CreateInvestmentRepository
             ':is_isento'             => $result['is_isento'] ? 1 : 0,
             ':days'                  => $result['days'],
             ':business_days'         => $result['business_days'],
+            ':ir_aliquot'            => $result['ir_aliquot'],
+            ':profit_percentage'     => $result['profit_percentage'],
         ]);
     }
 }

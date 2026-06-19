@@ -42,6 +42,8 @@ abstract class BaseApiController
                 'days'                  => $result->days,
                 'business_days'         => $result->businessDays,
                 'is_isento'             => $result->isIsento,
+                'ir_aliquot'            => (float) $result->irAliquot,
+                'profit_percentage'     => (float) $result->profitPercentage,
             ],
         ];
     }
