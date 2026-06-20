@@ -188,7 +188,7 @@ class InvestmentService extends ServiceBase
             };
 
         $profitPercentageRaw = bccomp($input->initialCapital, '0', 6) > 0
-            ? bcmul(bcdiv($profitBrutoRaw, $input->initialCapital, 6), '1000', 6)
+            ? bcmul(bcdiv($profitBrutoRaw, $input->initialCapital, 6), '100', 6)
             : '0';
         $profitPercentage = number_format((float) $profitPercentageRaw, 2, '.', '');
 
