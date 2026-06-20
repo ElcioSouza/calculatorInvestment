@@ -31,6 +31,161 @@
                 "irAliquot": "22.5",
                 "profitPercentage": "14.85"
             }
+        },
+        "143": {
+            "id": 143,
+            "input": {
+                "initialCapital": "42000",
+                "investmentType": "cdb",
+                "rateType": "pos",
+                "cdiPercentage": "130",
+                "selicMeta": "14.25",
+                "preFixedAnnualRate": "",
+                "applicationDate": "2026-05-04",
+                "redemptionDate": "2026-06-03",
+                "months": 1,
+                "selicIsOver": false,
+                "cdiOver": "14.15002002000000"
+            },
+            "result": {
+                "amountBruto": "42623.72",
+                "amountLiquid": "42483.38",
+                "profitBruto": "623.72",
+                "profitLiquid": "483.38",
+                "iofValue": "0.00",
+                "irTaxAmount": "140.34",
+                "monthlyProfitLiquid": "483.38",
+                "dailyProfitDisplay": "21.9719",
+                "isIsento": false,
+                "days": 30,
+                "businessDays": 22,
+                "irAliquot": "22.5",
+                "profitPercentage": "14.85"
+            }
+        },
+        "144": {
+            "id": 144,
+            "input": {
+                "initialCapital": "42000",
+                "investmentType": "cdb",
+                "rateType": "pos",
+                "cdiPercentage": "130",
+                "selicMeta": "14.25",
+                "preFixedAnnualRate": "",
+                "applicationDate": "2026-05-04",
+                "redemptionDate": "2026-06-03",
+                "months": 1,
+                "selicIsOver": false,
+                "cdiOver": "14.15002002000000"
+            },
+            "result": {
+                "amountBruto": "42623.72",
+                "amountLiquid": "42483.38",
+                "profitBruto": "623.72",
+                "profitLiquid": "483.38",
+                "iofValue": "0.00",
+                "irTaxAmount": "140.34",
+                "monthlyProfitLiquid": "483.38",
+                "dailyProfitDisplay": "21.9719",
+                "isIsento": false,
+                "days": 30,
+                "businessDays": 22,
+                "irAliquot": "22.5",
+                "profitPercentage": "14.85"
+            }
+        },
+        "145": {
+            "id": 145,
+            "input": {
+                "initialCapital": "10000",
+                "investmentType": "cdb",
+                "rateType": "pos",
+                "cdiPercentage": "100",
+                "selicMeta": "14.25000000",
+                "preFixedAnnualRate": "11.50",
+                "applicationDate": "2026-06-19",
+                "redemptionDate": "2026-07-17",
+                "months": 1,
+                "selicIsOver": false,
+                "cdiOver": "14.15002002"
+            },
+            "result": {
+                "amountBruto": "10105.59",
+                "amountLiquid": "10076.92",
+                "profitBruto": "105.59",
+                "profitLiquid": "76.92",
+                "iofValue": "6.34",
+                "irTaxAmount": "22.33",
+                "monthlyProfitLiquid": "76.92",
+                "dailyProfitDisplay": "3.8461",
+                "isIsento": false,
+                "days": 28,
+                "businessDays": 20,
+                "irAliquot": "22.5",
+                "profitPercentage": "10.56"
+            }
+        },
+        "146": {
+            "id": 146,
+            "input": {
+                "initialCapital": "42000",
+                "investmentType": "cdb",
+                "rateType": "pos",
+                "cdiPercentage": "130",
+                "selicMeta": "14.25",
+                "preFixedAnnualRate": "",
+                "applicationDate": "2026-05-04",
+                "redemptionDate": "2026-06-03",
+                "months": 1,
+                "selicIsOver": false,
+                "cdiOver": "14.15002002000000"
+            },
+            "result": {
+                "amountBruto": "42623.72",
+                "amountLiquid": "42483.38",
+                "profitBruto": "623.72",
+                "profitLiquid": "483.38",
+                "iofValue": "0.00",
+                "irTaxAmount": "140.34",
+                "monthlyProfitLiquid": "483.38",
+                "dailyProfitDisplay": "21.9719",
+                "isIsento": false,
+                "days": 30,
+                "businessDays": 22,
+                "irAliquot": "22.5",
+                "profitPercentage": "14.85"
+            }
+        },
+        "147": {
+            "id": 147,
+            "input": {
+                "initialCapital": "42000",
+                "investmentType": "cdb",
+                "rateType": "pos",
+                "cdiPercentage": "130",
+                "selicMeta": "14.25",
+                "preFixedAnnualRate": "",
+                "applicationDate": "2026-05-04",
+                "redemptionDate": "2026-06-03",
+                "months": 1,
+                "selicIsOver": false,
+                "cdiOver": "14.15002002000000"
+            },
+            "result": {
+                "amountBruto": "42623.72",
+                "amountLiquid": "42483.38",
+                "profitBruto": "623.72",
+                "profitLiquid": "483.38",
+                "iofValue": "0.00",
+                "irTaxAmount": "140.34",
+                "monthlyProfitLiquid": "483.38",
+                "dailyProfitDisplay": "21.9719",
+                "isIsento": false,
+                "days": 30,
+                "businessDays": 22,
+                "irAliquot": "22.5",
+                "profitPercentage": "14.85"
+            }
         }
     }
 }

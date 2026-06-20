@@ -112,6 +112,8 @@ class InvestmentService extends ServiceBase
             'is_isento'             => $result->isIsento,
             'days'                  => $result->days,
             'business_days'         => $result->businessDays,
+            'ir_aliquot'            => $result->irAliquot,
+            'profit_percentage'     => $result->profitPercentage,
         ]);
 
         return $result;

@@ -5,6 +5,7 @@ use App\Controllers\CalculateInvestmentEstimateController;
 use App\Controllers\CreateInvestmentController;
 use App\Controllers\DeleteInvestmentController;
 use App\Controllers\ListInvestmentsController;
+use App\Controllers\SelicController;
 use App\Controllers\ShowInvestmentController;
 use App\Controllers\UpdateInvestmentController;
 
@@ -17,6 +18,7 @@ class HttpApplication
         private UpdateInvestmentController $updateController,
         private DeleteInvestmentController $deleteController,
         private CalculateInvestmentEstimateController $estimateController,
+        private SelicController $selicController,
     ) {}
 
     public function handle(): void
@@ -26,6 +28,11 @@ class HttpApplication
         $path   = rtrim($path, '/');
 
         $params = $this->resolveParams($method);
+
+        if ($path === '/api/selic') {
+            $this->selicController->execute($params);
+            return;
+        }
 
         if ($path === '/api/calculate') {
             $hasInvestmentParams = isset($params['investment_type'])
@@ -83,6 +90,7 @@ class HttpApplication
         echo json_encode([
             'error'  => 'Rota não encontrada.',
             'routes' => [
+                'GET    /api/selic'                => 'Consulta Selic Meta atual (BCB)',
                 'GET    /api/calculate'           => 'Lista todos os investimentos cadastrados',
                 'GET    /api/calculate?params...' => 'Calcula investimento via query string (sem persistência)',
                 'POST   /api/calculate'           => 'Calcula novo investimento via body (JSON ou form)',

@@ -109,11 +109,21 @@ O schema (`sql/calculator_investment.sql`) define 4 tabelas:
 | `is_isento` | TINYINT(1) | Investimento isento (LCI/LCA) |
 | `days` | INT | Dias corridos |
 | `business_days` | INT | Dias úteis |
+| `ir_aliquot` | DECIMAL(5,2) | Alíquota de IR aplicada (ex: 22.5, 20, 17.5, 15) |
+| `profit_percentage` | DECIMAL(10,6) | Percentual de lucro sobre o capital inicial |
 | `created_at` | TIMESTAMP | Data de criação |
 
 ### Nota sobre migração
 
 O schema SQL é aplicado apenas uma vez via `mysql < sql/calculator_investment.sql`. Não há script de migração incremental — em caso de alterações, edite o schema diretamente e reimporte.
+
+Para adicionar as colunas `ir_aliquot` e `profit_percentage` em bancos existentes:
+
+```sql
+ALTER TABLE investment_estimate 
+ADD COLUMN ir_aliquot DECIMAL(5,2) NOT NULL DEFAULT 0,
+ADD COLUMN profit_percentage DECIMAL(10,6) NOT NULL DEFAULT 0;
+```
 
 ---
 
@@ -152,6 +162,7 @@ php -S localhost:8000
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
+| `GET` | `/api/selic` | **Consulta** Selic Meta atual (BCB) |
 | `GET` | `/api/calculate` | **Lista todos** os investimentos cadastrados |
 | `GET` | `/api/calculate?investment_type=cdb&rate_type=pos&capital=10000&cdi=110&application_date=2026-01-01&months=6` | **Calcula estimativa** (sem persistência) via query string |
 | `GET` | `/api/calculate?id=1` | **Busca** investimento por ID (atalho para `/api/calculate/1`) |
@@ -173,6 +184,22 @@ curl -X POST http://localhost:8000/api/calculate \
     "application_date": "2026-01-05",
     "months": 6
   }'
+```
+
+**Exemplo GET /api/selic:**
+
+```bash
+curl http://localhost:8000/api/selic
+```
+
+Resposta:
+
+```json
+{
+    "selic_meta": 14.25,
+    "date": "05/08/2026",
+    "source": "BCB/SGS Séries Temporais"
+}
 ```
 
 ### Opções CLI / Parâmetros da API
@@ -403,6 +430,12 @@ index.php --> bootstrap.php (Container + AppServiceProvider)
   |
   v
 HttpApplication (roteamento)
+  |
+  +--> GET /api/selic
+  |      +--> SelicController::execute()
+  |             +--> SelicUseCase::execute()
+  |                    +--> SelicService::execute()
+  |                           +--> CdiApiClient (API BCB série 432)
   |
   +--> GET /api/calculate (sem params de investimento)
    |      +--> ListInvestmentsController::execute()
@@ -757,6 +790,7 @@ calculatorInvestment/
 │   │   ├── CalculateInvestmentEstimateController.php # Calcula estimativa sem persistir (GET)
 │   │   ├── ShowInvestmentController.php   # Busca por ID
 │   │   ├── UpdateInvestmentController.php # Atualiza por ID
+│   │   ├── SelicController.php            # Consulta Selic Meta atual (GET /api/selic)
 │   │   └── DeleteInvestmentController.php # Deleta por ID
 │   ├── Core/
 │   │   ├── Container.php                  # Container de injecao de dependencia
@@ -792,11 +826,13 @@ calculatorInvestment/
 │   │   ├── ListInvestmentService.php     # Listagem com fallback MySQL → JSON
 │   │   ├── ProfitCalculationService.php  # Calculo de lucros
 │   │   ├── RateCalculationService.php    # Operacoes matematicas de taxas
+│   │   ├── SelicService.php              # Obtencao da Selic Meta do BCB
 │   │   ├── ShowInvestmentService.php     # Busca por ID com fallback MySQL → JSON
 │   │   └── TaxCalculationService.php     # Calculo de IR e IOF
 │   ├── UseCases/
 │   │   ├── CalculateInvestmentUseCase.php
 │   │   ├── ListInvestmentsUseCase.php
+│   │   ├── SelicUseCase.php
 │   │   ├── ShowInvestmentUseCase.php
 │   │   └── DeleteInvestmentUseCase.php
 │   └── ValueObjects/
@@ -942,7 +978,7 @@ Repositório de persistência MySQL focado nas rotas `POST /api/calculate` e `PU
 - **Descrição:** Insere um registro na tabela `investment_estimate` com o resultado consolidado do investimento.
 - **Parâmetros:**
   - `$investmentId` (`int`) — ID do investimento pai (FK `investments.id`, UNIQUE).
-  - `$result` (`array`) — Dados: `amount_bruto`, `amount_liquid`, `profit_bruto`, `profit_liquid`, `iof_value`, `ir_tax_amount`, `monthly_profit_liquid`, `daily_profit_display`, `is_isento`, `days`, `business_days`.
+  - `$result` (`array`) — Dados: `amount_bruto`, `amount_liquid`, `profit_bruto`, `profit_liquid`, `iof_value`, `ir_tax_amount`, `monthly_profit_liquid`, `daily_profit_display`, `is_isento`, `days`, `business_days`, `ir_aliquot`, `profit_percentage`.
 
 #### `updateInvestment(int $id, array $input): void`
 - **Descrição:** Atualiza um registro existente na tabela `investments`.
@@ -954,7 +990,7 @@ Repositório de persistência MySQL focado nas rotas `POST /api/calculate` e `PU
 - **Descrição:** Atualiza o registro na tabela `investment_estimate` para um investimento existente.
 - **Parâmetros:**
   - `$investmentId` (`int`) — ID do investimento pai.
-  - `$result` (`array`) — Mesmos campos do `insertEstimate`.
+  - `$result` (`array`) — Mesmos campos do `insertEstimate`: `amount_bruto`, `amount_liquid`, `profit_bruto`, `profit_liquid`, `iof_value`, `ir_tax_amount`, `monthly_profit_liquid`, `daily_profit_display`, `is_isento`, `days`, `business_days`, `ir_aliquot`, `profit_percentage`.
 
 ---
 

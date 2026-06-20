@@ -11,6 +11,7 @@ use App\Controllers\CreateInvestmentController;
 use App\Controllers\DeleteInvestmentController;
 use App\Controllers\InvestmentResultController;
 use App\Controllers\ListInvestmentsController;
+use App\Controllers\SelicController;
 use App\Controllers\ShowInvestmentController;
 use App\Controllers\UpdateInvestmentController;
 use App\Factories\HttpInputFactory;
@@ -29,6 +30,7 @@ use App\Services\DailyReportService;
 use App\Services\DeleteInvestmentService;
 use App\Services\InvestmentService;
 use App\Services\ListInvestmentService;
+use App\Services\SelicService;
 use App\Services\ShowInvestmentService;
 use App\Services\ProfitCalculationService;
 use App\Services\RateCalculationService;
@@ -36,6 +38,7 @@ use App\Services\TaxCalculationService;
 use App\UseCases\CalculateInvestmentUseCase;
 use App\UseCases\DeleteInvestmentUseCase;
 use App\UseCases\ListInvestmentsUseCase;
+use App\UseCases\SelicUseCase;
 use App\UseCases\ShowInvestmentUseCase;
 
 class AppServiceProvider
@@ -181,6 +184,16 @@ class AppServiceProvider
             true
         );
 
+        $container->bind(SelicService::class, fn() => new SelicService(), true);
+
+        $container->bind(
+            SelicUseCase::class,
+            fn($c) => new SelicUseCase(
+                $c->getInstancia(SelicService::class),
+            ),
+            true
+        );
+
         $container->bind(CalculateController::class, fn($c) => new CalculateController(
             $c->getInstancia(InvestmentInputFactory::class),
             $c->getInstancia(CalculateInvestmentUseCase::class),
@@ -245,6 +258,14 @@ class AppServiceProvider
             true
         );
 
+        $container->bind(
+            SelicController::class,
+            fn($c) => new SelicController(
+                $c->getInstancia(SelicUseCase::class),
+            ),
+            true
+        );
+
         $container->bind(CliApplication::class, fn($c) => new CliApplication(
             $c->getInstancia(CalculateController::class),
             $c->getInstancia(InvestmentResultController::class),
@@ -264,6 +285,7 @@ class AppServiceProvider
                 $c->getInstancia(UpdateInvestmentController::class),
                 $c->getInstancia(DeleteInvestmentController::class),
                 $c->getInstancia(CalculateInvestmentEstimateController::class),
+                $c->getInstancia(SelicController::class),
             ),
             true
         );
