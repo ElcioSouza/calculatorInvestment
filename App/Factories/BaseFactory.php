@@ -179,7 +179,7 @@ abstract class BaseFactory
         $easter = $this->calculateEaster($year);
         $dateStr = $date->format('Y-m-d');
 
-        foreach ([-48, -47, -2, 0, 60] as $offset) {
+        foreach ([-47, -46, -2, 60] as $offset) {
             if ($easter->modify(($offset >= 0 ? '+' : '') . $offset . ' days')->format('Y-m-d') === $dateStr) {
                 return true;
             }

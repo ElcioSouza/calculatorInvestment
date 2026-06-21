@@ -45,11 +45,12 @@ class TaxCalculationService extends ServiceBase implements CalculatesTaxInterfac
 
     public function calculateIOFValue(string $lucroBruto, int $days): string
     {
-        if ($days > 30 || $days <= 0) {
+        if ($days > 30) {
             return '0.000000';
         }
 
-        $aliquot = $this->iofTable[$days] ?? '0.00';
+        $key = max($days, 1);
+        $aliquot = $this->iofTable[$key] ?? '0.00';
         return bcmul($lucroBruto, $aliquot, $this->scale);
     }
 }

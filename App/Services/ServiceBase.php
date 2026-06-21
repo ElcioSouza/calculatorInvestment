@@ -23,5 +23,5 @@ abstract class ServiceBase
     ];
 
 
-    protected const EASTER_OFFSETS = [-47, -46, -45, -2, 60];
+    protected const EASTER_OFFSETS = [-47, -46, -2, 60];
 }
