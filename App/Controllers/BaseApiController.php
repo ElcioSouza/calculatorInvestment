@@ -24,7 +24,7 @@ abstract class BaseApiController
                 'selic_meta'       => $input->selicMetaDefault !== '' ? (float) $input->selicMetaDefault : ($input->selicMeta !== '' ? (float) $input->selicMeta : null),
                 'selic_meta_default' => $input->selicMetaDefault !== '' ? (float) $input->selicMetaDefault : null,
                 'pre_fixed_rate'   => $input->preFixedAnnualRate !== '' ? (float) $input->preFixedAnnualRate : null,
-                'cdi_over'         => $input->cdiOver !== '' ? (float) $input->cdiOver : null,
+                'cdi_over'         => $input->cdiOver !== '' ? round((float) $input->cdiOver, 2) : null,
                 'application_date' => $input->applicationDate,
                 'redemption_date'  => $input->redemptionDate,
                 'months'           => $input->months,

@@ -19,7 +19,8 @@ class ShowInvestmentService
             if ($item !== null) {
                 return $item;
             }
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            error_log('[ShowInvestmentService] MySQL fallback: ' . $e->getMessage());
         }
 
         return $this->jsonRepository->findById($id);

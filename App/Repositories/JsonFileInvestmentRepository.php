@@ -111,14 +111,16 @@ class JsonFileInvestmentRepository implements InvestmentRepositoryInterface
         }
 
         $this->storage = $data['storage'] ?? [];
-        $this->nextId = $data['nextId'] ?? 1;
+        $storedNextId = $data['nextId'] ?? 1;
+        $maxKey = !empty($this->storage) ? max(array_keys($this->storage)) : 0;
+        $this->nextId = max($storedNextId, $maxKey + 1);
     }
 
     private function saveToFile(): void
     {
         $dir = dirname($this->filePath);
         if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
+            mkdir($dir, 0750, true);
         }
 
         $data = [
@@ -126,7 +128,10 @@ class JsonFileInvestmentRepository implements InvestmentRepositoryInterface
             'storage' => $this->storage,
         ];
 
-        file_put_contents($this->filePath, json_encode($data, JSON_PRETTY_PRINT));
+        $json = json_encode($data, JSON_PRETTY_PRINT);
+        $tmp = $this->filePath . '.tmp.' . getmypid();
+        file_put_contents($tmp, $json, LOCK_EX);
+        rename($tmp, $this->filePath);
     }
 
     private function inputToArray(InvestmentInput $input): array

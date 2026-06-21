@@ -39,27 +39,15 @@ class CdiRateService
             }
         }
 
-        $monthlyResult = $this->apiClient->fetchLatestRecord(
+        $annualResult = $this->apiClient->fetchLatestRecord(
             Config::bcbCdiAnnualUrl()
         );
-        if ($monthlyResult !== null) {
-            ['valor' => $valor, 'data' => $data] = $monthlyResult;
-            if ($valor > 0.0 && $valor < 100.0) {
-                if ($valor > 5.0) {
-                    return [
-                        'rate'   => number_format($valor, 8, '.', ''),
-                        'source' => "BC/SGS série 4390 - CDI a.a. ({$data})",
-                    ];
-                }
-
-                $annual = (pow(1.0 + $valor / 100.0, 12) - 1.0) * 100.0;
+        if ($annualResult !== null) {
+            ['valor' => $valor, 'data' => $data] = $annualResult;
+            if ($this->calculator->isAnnualRateValid($valor)) {
                 return [
-                    'rate'   => number_format($annual, 8, '.', ''),
-                    'source' => sprintf(
-                        'BC/SGS série 4390 - CDI mensal %.4f%% → a.a. (%s)',
-                        $valor,
-                        $data
-                    ),
+                    'rate'   => number_format($valor, 8, '.', ''),
+                    'source' => "BC/SGS série 4390 - CDI a.a. ({$data})",
                 ];
             }
         }

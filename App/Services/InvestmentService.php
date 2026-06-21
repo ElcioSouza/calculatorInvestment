@@ -169,8 +169,8 @@ class InvestmentService extends ServiceBase
         $profitLiquidFmt  = $this->formatter->normalizeAmountRounded($profitLiquid);
 
         $monthlyProfitLiquid = $input->isIsento
-            ? bcdiv($profitBrutoRaw, (string) $input->months, 2)
-            : bcdiv($profitLiquid, (string) $input->months, 2);
+            ? bcdiv(bcmul($profitBrutoRaw, '21', 6), (string) $businessDays, 2)
+            : bcdiv(bcmul($profitLiquid, '21', 6), (string) $businessDays, 2);
 
         $irTaxAmount = $input->isIsento
             ? '0.00'

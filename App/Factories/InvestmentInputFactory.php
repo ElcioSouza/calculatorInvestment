@@ -44,11 +44,15 @@ final class InvestmentInputFactory extends BaseFactory
                     echo $e->getMessage() . "\n";
                     $applicationDate = $this->askValidBusinessDay("Data de aplicação [{$defaultDate}]: ", $defaultDate);
                 } else {
-                    throw $e;
+                    $applicationDate = $this->nextBusinessDay($applicationDate);
                 }
             }
         } else {
-            $applicationDate = $this->askValidBusinessDay("Data de aplicação [{$defaultDate}]: ", $defaultDate);
+            if (ConsoleInput::isInteractive()) {
+                $applicationDate = $this->askValidBusinessDay("Data de aplicação [{$defaultDate}]: ", $defaultDate);
+            } else {
+                $applicationDate = $this->nextBusinessDay($defaultDate);
+            }
         }
 
         $months = ConsoleInput::option($argv, 'months', '');

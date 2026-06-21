@@ -19,7 +19,8 @@ class ListInvestmentService
             if (!empty($result)) {
                 return $result;
             }
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            error_log('[ListInvestmentService] MySQL fallback: ' . $e->getMessage());
         }
 
         return $this->jsonRepository->all();

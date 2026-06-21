@@ -8,7 +8,7 @@ class CdiRateCalculator
 
     public function isAnnualRateValid(float $value): bool
     {
-        return $value > 1.0 && $value < 100.0;
+        return $value > 0.0 && $value < 100.0;
     }
 
     public function isDailyRateValid(float $value): bool

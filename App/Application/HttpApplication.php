@@ -27,7 +27,14 @@ class HttpApplication
         $path   = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
         $path   = rtrim($path, '/');
 
-        $params = $this->resolveParams($method);
+        try {
+            $params = $this->resolveParams($method);
+        } catch (\RuntimeException $e) {
+            http_response_code(413);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['error' => $e->getMessage()]);
+            return;
+        }
 
         if ($path === '/api/selic') {
             $this->selicController->execute($params);
@@ -74,7 +81,14 @@ class HttpApplication
         }
 
         if (preg_match('#^/api/calculate/([^/]+)$#', $path, $matches)) {
-            $params['id'] = urldecode($matches[1]);
+            $id = urldecode($matches[1]);
+            if (!ctype_digit($id)) {
+                http_response_code(400);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['error' => 'ID deve ser numérico.']);
+                return;
+            }
+            $params['id'] = $id;
 
             match ($method) {
                 'GET'    => $this->showController->execute($params),
@@ -88,16 +102,7 @@ class HttpApplication
         http_response_code(404);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
-            'error'  => 'Rota não encontrada.',
-            'routes' => [
-                'GET    /api/selic'                => 'Consulta Selic Meta atual (BCB)',
-                'GET    /api/calculate'           => 'Lista todos os investimentos cadastrados',
-                'GET    /api/calculate?params...' => 'Calcula investimento via query string (sem persistência)',
-                'POST   /api/calculate'           => 'Calcula novo investimento via body (JSON ou form)',
-                'GET    /api/calculate/{id}'      => 'Busca investimento por ID',
-                'PUT    /api/calculate/{id}'      => 'Recalcula substituindo registro existente',
-                'DELETE /api/calculate/{id}'      => 'Remove registro existente',
-            ],
+            'error' => 'Rota não encontrada.',
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     }
 
@@ -109,7 +114,10 @@ class HttpApplication
             $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
 
             if (str_contains($contentType, 'application/json')) {
-                $raw  = file_get_contents('php://input');
+                $raw = file_get_contents('php://input');
+                if (strlen($raw) > 10240) {
+                    throw new \RuntimeException('Body excede o tamanho máximo de 10KB.');
+                }
                 $json = json_decode($raw, true);
                 if (is_array($json)) {
                     $params = array_merge($params, $json);

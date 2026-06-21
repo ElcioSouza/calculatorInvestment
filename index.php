@@ -22,6 +22,9 @@ try {
     } else {
         http_response_code(500);
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['error' => $exception->getMessage()], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        $message = (($_ENV['APP_DEBUG'] ?? '') === 'true')
+            ? $exception->getMessage()
+            : 'Erro interno do servidor.';
+        echo json_encode(['error' => $message], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     }
 }

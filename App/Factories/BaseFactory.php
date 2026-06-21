@@ -116,6 +116,17 @@ abstract class BaseFactory
         };
     }
 
+    protected function nextBusinessDay(string $date): string
+    {
+        $dt = new \DateTimeImmutable($date, new \DateTimeZone('America/Sao_Paulo'));
+
+        while ($this->isWeekendOrHoliday($dt)) {
+            $dt = $dt->modify('+1 day');
+        }
+
+        return $dt->format('Y-m-d');
+    }
+
     protected function ensureIsBusinessDay(string $date, string $label = 'Data de aplicação'): void
     {
         $dt = new \DateTimeImmutable($date, new \DateTimeZone('America/Sao_Paulo'));
