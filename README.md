@@ -21,6 +21,7 @@ Aplicação em PHP (CLI + API REST) que calcula o retorno de investimentos em CD
 - [Fontes de Dados (Banco Central do Brasil)](#fontes-de-dados-banco-central-do-brasil)
 - [Conceitos Econômicos](#conceitos-econômicos)
 - [Estrutura do Projeto](#estrutura-do-projeto)
+- [Service Providers (SOLID)](#service-providers-solid)
 - [Catálogo de Métodos](#catálogo-de-métodos)
 
 ---
@@ -698,7 +699,7 @@ $$
 - **Cliente HTTP:** cURL nativo
 - **Matemática:** BC Math (`bcadd`, `bcsub`, `bcmul`, `bcdiv`, `bccomp`) + `pow()` para juros compostos
 - **Datas:** `DateTimeImmutable`, `DatePeriod`, `DateInterval`
-- **Arquitetura:** Container DI, camada de serviços, presenters, repositories
+- **Arquitetura:** Container DI, Service Providers (SOLID), camada de serviços, presenters, repositories
 - **Persistência:**
   - Arquivo JSON (`data/investments.json`) via `JsonFileInvestmentRepository` (padrão, usado por CLI e todas as rotas)
   - MySQL via `CreateInvestmentRepository` (INSERT na rota `POST /api/calculate`), `DeleteInvestmentRepository` (DELETE), `ListInvestmentRepository` (SELECT), `ShowInvestmentRepository` (SELECT por ID)
@@ -757,7 +758,7 @@ Feriados fixos e móveis considerados no cálculo de dias úteis:
 calculatorInvestment/
 ├── .env                                   # Credenciais do banco de dados
 ├── .env.example                           # Template do .env
-├── bootstrap.php                          # Autoload, Container, AppServiceProvider
+├── bootstrap.php                          # Autoload, Container, AppServiceProvider + Providers
 ├── index.php                              # Entry point (CLI + HTTP)
 ├── composer.json
 ├── composer.lock
@@ -779,7 +780,8 @@ calculatorInvestment/
 │   │   ├── CountsBusinessDaysInterface.php
 │   │   ├── FormatsAmountInterface.php
 │   │   ├── ControllerInterface.php
-│   │   └── InvestmentRepositoryInterface.php
+│   │   ├── InvestmentRepositoryInterface.php
+│   │   └── ProviderInterface.php          # Contrato para Service Providers
 │   ├── Controllers/
 │   │   ├── CliController.php              # Controller CLI
 │   │   ├── CalculateController.php        # Logica de calculo (CLI)
@@ -795,7 +797,14 @@ calculatorInvestment/
 │   ├── Core/
 │   │   ├── Container.php                  # Container de injecao de dependencia
 │   │   ├── Database.php                   # Conexao PDO singleton com MySQL
-│   │   └── AppServiceProvider.php         # Registro de todos os servicos
+│   │   ├── AppServiceProvider.php         # Coordenador de providers (5 linhas)
+│   │   └── Providers/
+│   │       ├── ProviderInterface.php      # Contrato: register(Container)
+│   │       ├── CoreServiceProvider.php    # Infra: JSON repo, services base
+│   │       ├── CalculationServiceProvider.php # CdiRate, InvestmentService, UseCases
+│   │       ├── RepositoryServiceProvider.php  # MySQL repos + CRUD services
+│   │       ├── HttpServiceProvider.php    # Controllers HTTP + factories
+│   │       └── CliServiceProvider.php     # Controllers CLI + factories
 │   ├── Factories/
 │   │   ├── BaseFactory.php                # Validacao, feriados, datas
 │   │   ├── InvestmentInputFactory.php     # Cria InvestmentInput (CLI)
@@ -844,6 +853,55 @@ calculatorInvestment/
 
 ---
 
+## Service Providers (SOLID)
+
+O registro de dependências é dividido em 5 providers especializados, cada um responsável por uma camada da arquitetura. O `AppServiceProvider` atua como coordenador, delegando para cada provider.
+
+### Princípios aplicados
+
+| Princípio | Aplicação |
+|-----------|-----------|
+| **S** - Single Responsibility | Cada provider tem 1 responsabilidade: infra, cálculo, persistência, HTTP ou CLI |
+| **O** - Open/Closed | Para adicionar novo provider, cria um arquivo novo sem alterar os existentes |
+| **L** - Liskov Substitution | `ProviderInterface` — qualquer provider pode ser substituído por outro que implemente o mesmo contrato |
+| **I** - Interface Segregation | `ProviderInterface` tem 1 método (`register`) — não força imports desnecessários |
+| **D** - Dependency Inversion | Container resolve dependências via contrato, não via implementação concreta |
+
+### Diagrama de dependências
+
+```
+AppServiceProvider (coordenador)
+  ├── CoreServiceProvider          ← serviços base (sem dependências externas)
+  ├── CalculationServiceProvider   ← cálculos + use cases (depende de Core)
+  ├── RepositoryServiceProvider    ← MySQL repos + CRUD (depende de Core)
+  ├── HttpServiceProvider          ← controllers HTTP (depende de Calculation + Repository)
+  └── CliServiceProvider           ← controllers CLI (depende de Calculation)
+```
+
+### Como adicionar um novo provider
+
+1. Crie o arquivo em `App/Core/Providers/MeuNovoProvider.php`
+2. Implemente `ProviderInterface`
+3. Adicione o `register()` com seus bindings
+4. Registre no `AppServiceProvider::register()`:
+
+```php
+(new MeuNovoProvider())->register($container);
+```
+
+### Comparação: antes vs depois
+
+| Aspecto | Antes (monolítico) | Depois (providers) |
+|---------|--------------------|--------------------|
+| Arquivos | 1 arquivo, 293 linhas | 6 arquivos, ~50 linhas cada |
+| Imports | 42 imports em 1 arquivo | ~8-10 imports por arquivo |
+| Responsabilidades | 5 misturadas | 1 por provider |
+| Adicionar service | Buscar no arquivo grande | Ir no provider correto |
+| Testabilidade | Difícil isolar camada | Mockar provider específico |
+| Manutenção | Editar o mesmo arquivo sempre | Editar só o provider da camada |
+
+---
+
 ## Catálogo de Métodos
 
 ### App\Core\Container
@@ -872,20 +930,70 @@ Container de injeção de dependência (singleton).
 
 ### App\Core\AppServiceProvider
 
-Provedor que registra todos os serviços no Container.
+Coordenador que registra todos os providers no Container. Segue o princípio de Single Responsibility — cada provider é responsável por uma camada da arquitetura.
 
 #### `register(Container $container): void`
-- **Descrição:** Registra todos os serviços do sistema como singletons. Principais bindings:
-  - Repositório padrão: `JsonFileInvestmentRepository` (persistente JSON)
-  - Repositórios MySQL: `CreateInvestmentRepository`, `DeleteInvestmentRepository`, `ListInvestmentRepository`, `ShowInvestmentRepository`
-  - Services de fallback: `ListInvestmentService` (MySQL → JSON), `ShowInvestmentService` (MySQL → JSON)
-  - Conexão PDO: `Database::getConnection()`
-  - Use Cases: `CalculateInvestmentUseCase`, `ListInvestmentsUseCase`, `ShowInvestmentUseCase`, `DeleteInvestmentUseCase`
-  - Controllers API: `CreateInvestmentController`, `ListInvestmentsController`, `ShowInvestmentController`, `UpdateInvestmentController`, `DeleteInvestmentController`
-  - Services: `AmountFormatterService`, `BusinessDayService`, `CdiRateService`, `InvestmentService`, `DeleteInvestmentService`, etc.
+- **Descrição:** Delega o registro para 5 providers especializados:
+  - `CoreServiceProvider` — Repositório JSON, services base (AmountFormatter, BusinessDay, Rate, Tax, Profit, InvestmentCalculation)
+  - `CalculationServiceProvider` — CdiRateService, InvestmentService, UseCases, DailyReport, Selic
+  - `RepositoryServiceProvider` — Repositórios MySQL (List, Show, Delete) + CRUD services + UseCases
+  - `HttpServiceProvider` — HttpInputFactory, 7 controllers HTTP, HttpApplication
+  - `CliServiceProvider` — InvestmentInputFactory, CalculateController, Presenter, CliApplication
 - **Parâmetros:**
   - `$container` (`Container`) — Instância do Container de DI.
 - **Retorno:** `void`
+
+---
+
+### App\Contracts\ProviderInterface
+
+Contrato que todos os providers devem implementar.
+
+#### `register(Container $container): void`
+- **Descrição:** Registra bindings no Container de DI.
+- **Parâmetros:**
+  - `$container` (`Container`) — Instância do Container.
+- **Retorno:** `void`
+
+---
+
+### App\Core\Providers\CoreServiceProvider
+
+Provider de infraestrutura. Registra repositório JSON e services base (sem dependências externas).
+
+**Bindings:** `InvestmentRepositoryInterface` → `JsonFileInvestmentRepository`, `AmountFormatterService`, `BusinessDayService`, `InvestmentCalculation` → `DefaultInvestmentCalculation`, `RateCalculationService`, `TaxCalculationService`, `ProfitCalculationService`
+
+---
+
+### App\Core\Providers\CalculationServiceProvider
+
+Provider de cálculo. Registra services que dependem de infraestrutura (Database) e use cases.
+
+**Bindings:** `CdiRateService`, `InvestmentService`, `CalculateInvestmentUseCase`, `DailyReportService`, `SelicService`, `SelicUseCase`
+
+---
+
+### App\Core\Providers\RepositoryServiceProvider
+
+Provider de persistência MySQL. Registra repositórios MySQL (singleton=false) e services de CRUD com fallback MySQL → JSON.
+
+**Bindings:** `ListInvestmentRepository`, `ShowInvestmentRepository`, `ListInvestmentService`, `ShowInvestmentService`, `DeleteInvestmentService`, `ListInvestmentsUseCase`, `ShowInvestmentUseCase`, `DeleteInvestmentUseCase`
+
+---
+
+### App\Core\Providers\HttpServiceProvider
+
+Provider HTTP. Registra factories, controllers e a aplicação HTTP.
+
+**Bindings:** `HttpInputFactory`, `ListInvestmentsController`, `ShowInvestmentController`, `CreateInvestmentController`, `CalculateInvestmentEstimateController`, `UpdateInvestmentController`, `DeleteInvestmentController`, `SelicController`, `HttpApplication`
+
+---
+
+### App\Core\Providers\CliServiceProvider
+
+Provider CLI. Registra factories, controllers e a aplicação CLI.
+
+**Bindings:** `InvestmentInputFactory`, `InvestmentPresenter`, `InvestmentResultController`, `CalculateController`, `CliApplication`, `CliController`
 
 ---
 
