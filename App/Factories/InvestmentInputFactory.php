@@ -68,7 +68,6 @@ final class InvestmentInputFactory extends BaseFactory
             : $this->askPositiveNumber("Capital inicial [10000]: ", '10000', 'Capital inicial');
 
         $cdiPercentage      = ConsoleInput::option($argv, 'cdi', '100');
-        $selicMeta          = ConsoleInput::option($argv, 'selic-meta', $defaultSelic);
         $preFixedAnnualRate = ConsoleInput::option($argv, 'pre-rate', '11.50');
 
         if ($rateType === 'pre') {
@@ -81,12 +80,12 @@ final class InvestmentInputFactory extends BaseFactory
             $cdiPercentage = $cdiPercentage !== ''
                 ? $this->normalizePositiveNumberOrFail(trim($cdiPercentage), 'Rentabilidade (% do CDI)')
                 : $this->askPositiveNumber("Rentabilidade (% do CDI) [100]: ", '100', 'Rentabilidade (% do CDI)');
-
-            $selicMeta = ConsoleInput::option($argv, 'selic-meta', '');
-            $selicMeta = $selicMeta !== ''
-                ? $this->normalizePositiveNumberOrFail(trim($selicMeta), 'Selic Meta')
-                : $this->askPositiveNumber("Selic Meta [{$displaySelic}]: ", $defaultSelic, 'Selic Meta');
         }
+
+        $selicMeta = ConsoleInput::option($argv, 'selic-meta', '');
+        $selicMeta = $selicMeta !== ''
+            ? $this->normalizePositiveNumberOrFail(trim($selicMeta), 'Selic Meta')
+            : $this->askPositiveNumber("Selic Meta [{$displaySelic}]: ", $defaultSelic, 'Selic Meta');
 
         $cdiOver   = '';
         $manualCdiAnnual = ConsoleInput::option($argv, 'cdi-annual', '');

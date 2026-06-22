@@ -127,9 +127,7 @@ abstract class AbstractInvestmentPresenter
 
     protected function resolveTaxaSelicAtual(InvestmentInput $input): string
     {
-        return $input->cdiOver !== ''
-            ? number_format((float) $input->cdiOver, 2, '.', '')
-            : number_format(((float) $input->selicMeta) - 0.10, 2, '.', '');
+        return number_format((float) $input->selicMeta, 2, '.', '');
     }
 
     protected function resolveBusinessDaysPerMonth(InvestmentInput $input, Investment $result): int
