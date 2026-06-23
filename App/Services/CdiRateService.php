@@ -45,8 +45,11 @@ class CdiRateService
         if ($annualResult !== null) {
             ['valor' => $valor, 'data' => $data] = $annualResult;
             if ($this->calculator->isAnnualRateValid($valor)) {
+                $rate = $valor > 5.0
+                    ? $valor
+                    : $this->calculator->annualizeMonthlyRate($valor);
                 return [
-                    'rate'   => number_format($valor, 8, '.', ''),
+                    'rate'   => number_format($rate, 8, '.', ''),
                     'source' => "BC/SGS série 4390 - CDI a.a. ({$data})",
                 ];
             }
@@ -104,11 +107,11 @@ class CdiRateService
         $over = $this->fetchSelicOverAnnual();
 
         if ($over !== null) {
-            $spread = (float) $over - $meta;
+            $spread = abs((float) $over - $meta);
             return number_format($spread, 8, '.', '');
         }
 
-        return '0.15';
+        return '0.10';
     }
 
     private function fallbackCdi(string $selicMeta, string $spread, string $reason): array

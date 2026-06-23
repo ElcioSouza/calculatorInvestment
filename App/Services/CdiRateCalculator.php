@@ -20,4 +20,9 @@ class CdiRateCalculator
     {
         return (pow(1.0 + $dailyRate / 100.0, self::BUSINESS_DAYS_YEAR) - 1.0) * 100.0;
     }
+
+    public function annualizeMonthlyRate(float $monthlyRate): float
+    {
+        return (pow(1.0 + $monthlyRate / 100.0, 12) - 1.0) * 100.0;
+    }
 }

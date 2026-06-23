@@ -148,6 +148,7 @@ class JsonFileInvestmentRepository implements InvestmentRepositoryInterface
             'months'               => $input->months,
             'selicIsOver'          => $input->selicIsOver,
             'cdiOver'              => $input->cdiOver,
+            'selicMetaDefault'     => $input->selicMetaDefault,
         ];
     }
 
@@ -184,6 +185,7 @@ class JsonFileInvestmentRepository implements InvestmentRepositoryInterface
             months:               $arr['months'] ?? 1,
             selicIsOver:          $arr['selicIsOver'] ?? false,
             cdiOver:              $arr['cdiOver'] ?? '',
+            selicMetaDefault:     $arr['selicMetaDefault'] ?? '',
         );
     }
 

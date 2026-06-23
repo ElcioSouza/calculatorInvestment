@@ -12,6 +12,7 @@ use App\Factories\InvestmentInputFactory;
 use App\Presenters\InvestmentPresenter;
 use App\Services\CdiRateService;
 use App\Services\DailyReportService;
+use App\Services\RateCalculationService;
 use App\UseCases\CalculateInvestmentUseCase;
 
 class CliServiceProvider implements ProviderInterface
@@ -21,7 +22,8 @@ class CliServiceProvider implements ProviderInterface
         $container->bind(
             InvestmentInputFactory::class,
             fn($c) => new InvestmentInputFactory(
-                $c->getInstancia(CdiRateService::class)
+                $c->getInstancia(CdiRateService::class),
+                $c->getInstancia(RateCalculationService::class),
             ),
             true
         );

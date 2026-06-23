@@ -54,12 +54,12 @@ class RateCalculationService extends ServiceBase implements CalculatesRateInterf
         $profit = bcdiv(bcmul($initialCapital, $cdiCurrentRate, $this->scale), '100', $this->scale);
         return bcadd($initialCapital, $profit, $this->scale);
     }
-    public function convertSelicMetaToOver(string $selicMeta, bool $isOver = false, string $spread = '0.15'): string
+    public function convertSelicMetaToOver(string $selicMeta, bool $isOver = false, string $spread = '0.10'): string
     {
         if ($isOver) {
             return bcdiv($selicMeta, '1', 8);
         }
 
-        return bcadd($selicMeta, $spread, $this->scale);
+        return bcsub($selicMeta, $spread, $this->scale);
     }
 }

@@ -10,5 +10,5 @@ interface CalculatesRateInterface
     public function calculateDailyRateFromAnnual(string $annualRate): string;
     public function calculateAmountByBusinessDays(string $initialCapital, string $dailyRatePercent, int $businessDays): string;
     public function calculateAmountBruto(string $initialCapital, string $cdiCurrentRate): string;
-    public function convertSelicMetaToOver(string $selicMeta, bool $isOver = false, string $spread = '0.15'): string;
+    public function convertSelicMetaToOver(string $selicMeta, bool $isOver = false, string $spread = '0.10'): string;
 }

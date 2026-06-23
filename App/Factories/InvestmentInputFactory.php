@@ -3,12 +3,15 @@ namespace App\Factories;
 
 use App\Console\ConsoleInput;
 use App\Services\CdiRateService;
+use App\Services\RateCalculationService;
 use App\ValueObjects\InvestmentInput;
 
 final class InvestmentInputFactory extends BaseFactory
 {
-    public function __construct(private readonly CdiRateService $cdiRateService)
-    {
+    public function __construct(
+        private readonly CdiRateService $cdiRateService,
+        private readonly RateCalculationService $rateCalculationService,
+    ) {
     }
 
     public function create(array $argv, ?string $defaultSelic = null): InvestmentInput
@@ -91,6 +94,9 @@ final class InvestmentInputFactory extends BaseFactory
         $manualCdiAnnual = ConsoleInput::option($argv, 'cdi-annual', '');
         if ($manualCdiAnnual !== '') {
             $cdiOver = $this->normalizePositiveNumberOrFail(trim($manualCdiAnnual), 'CDI anual manual');
+        } elseif ($selicMeta !== $defaultSelic) {
+            $spread = $this->cdiRateService->getSelicMetaToOverSpread();
+            $cdiOver = $this->rateCalculationService->convertSelicMetaToOver($selicMeta, false, $spread);
         } else {
             $cdiResult = $this->cdiRateService->fetchCdiAnnual($selicMeta);
             $cdiOver   = $cdiResult['rate'];
