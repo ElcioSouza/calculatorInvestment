@@ -36,6 +36,14 @@ class HttpApplication
             return;
         }
 
+        if ($path === '' || $path === '/') {
+            $this->jsonResponse(200, [
+                'message' => 'Calculator Investment API',
+                'routes'  => $this->getRoutes(),
+            ]);
+            return;
+        }
+
         if ($path === '/api/selic') {
             $this->selicController->execute($params);
             return;
@@ -136,5 +144,69 @@ class HttpApplication
         header('Allow: ' . $allowed);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['error' => "Método não permitido. Permitidos: {$allowed}."]);
+    }
+
+    private function jsonResponse(int $status, array $data): void
+    {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    }
+
+    private function getRoutes(): array
+    {
+        return [
+            [
+                'method'      => 'GET',
+                'path'        => '/api/calculate',
+                'description' => 'Lista todos os investimentos (com paginação)',
+                'params'      => ['page' => 'int (default: 1)', 'per_page' => 'int (default: 10, max: 100)'],
+            ],
+            [
+                'method'      => 'GET',
+                'path'        => '/api/calculate?id={id}',
+                'description' => 'Busca investimento por ID',
+            ],
+            [
+                'method'      => 'GET',
+                'path'        => '/api/calculate/{id}',
+                'description' => 'Busca investimento por ID (via path)',
+            ],
+            [
+                'method'      => 'GET',
+                'path'        => '/api/calculate?investment_type={type}&...',
+                'description' => 'Simula cálculo de investimento (sem persistir)',
+                'params'      => [
+                    'investment_type' => 'cdb | cdi | selic | pre',
+                    'rate_type'       => 'pos | pre',
+                    'capital'         => 'float',
+                    'application_date'=> 'YYYY-MM-DD',
+                    'redemption_date' => 'YYYY-MM-DD',
+                    'months'          => 'int',
+                    'cdi_percentage'  => 'float (opcional)',
+                    'pre_fixed_rate'  => 'float (opcional)',
+                ],
+            ],
+            [
+                'method'      => 'POST',
+                'path'        => '/api/calculate',
+                'description' => 'Cria e persiste um novo investimento',
+            ],
+            [
+                'method'      => 'PUT',
+                'path'        => '/api/calculate/{id}',
+                'description' => 'Atualiza e recalcula investimento existente',
+            ],
+            [
+                'method'      => 'DELETE',
+                'path'        => '/api/calculate/{id}',
+                'description' => 'Remove investimento por ID',
+            ],
+            [
+                'method'      => 'GET',
+                'path'        => '/api/selic',
+                'description' => ' Retorna a taxa Selic Meta atual (BCB)',
+            ],
+        ];
     }
 }

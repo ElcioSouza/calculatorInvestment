@@ -13,17 +13,32 @@ class ListInvestmentsController extends BaseApiController implements ControllerI
     public function execute(array $params): mixed
     {
         try {
-            $all  = $this->listUseCase->execute();
-            $list = [];
+            $page    = max(1, (int) ($params['page'] ?? 1));
+            $perPage = max(1, min(100, (int) ($params['per_page'] ?? 10)));
 
-            foreach ($all as $item) {
+            $paginated = $this->listUseCase->paginated($page, $perPage);
+
+            $list = [];
+            foreach ($paginated['data'] as $item) {
                 $list[] = array_merge(
                     ['id' => $item['id']],
                     $this->buildPayload($item['input'], $item['result'])
                 );
             }
 
-            $this->jsonResponse(200, $list);
+            $total    = $paginated['total'];
+            $lastPage = (int) ceil($total / $perPage);
+
+            $this->jsonResponse(200, [
+                'data' => $list,
+                'pagination' => [
+                    'total'        => $total,
+                    'per_page'     => $perPage,
+                    'current_page' => $page,
+                    'last_page'    => $lastPage,
+                    'has_more'     => $page < $lastPage,
+                ],
+            ]);
         } catch (\Throwable $e) {
             $this->jsonResponse(500, ['error' => 'Erro interno: ' . $e->getMessage()]);
         }

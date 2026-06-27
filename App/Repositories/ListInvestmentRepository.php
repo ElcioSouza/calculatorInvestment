@@ -50,6 +50,60 @@ class ListInvestmentRepository
         return $this->rowsToItems($stmt->fetchAll());
     }
 
+    public function count(): int
+    {
+        $stmt = $this->pdo->query("SELECT COUNT(*) FROM investments");
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function paginated(int $page, int $perPage): array
+    {
+        $total = $this->count();
+        $offset = ($page - 1) * $perPage;
+
+        $stmt = $this->pdo->prepare(
+            "SELECT
+                i.id,
+                i.initial_capital,
+                i.investment_type,
+                i.rate_type,
+                i.cdi_percentage,
+                i.selic_meta,
+                i.selic_meta_default,
+                i.pre_fixed_annual_rate,
+                i.application_date,
+                i.redemption_date,
+                i.months,
+                i.selic_is_over,
+                i.cdi_over,
+                e.amount_bruto,
+                e.amount_liquid,
+                e.profit_bruto,
+                e.profit_liquid,
+                e.iof_value,
+                e.ir_tax_amount,
+                e.monthly_profit_liquid,
+                e.daily_profit_display,
+                e.is_isento,
+                e.days,
+                e.business_days,
+                e.ir_aliquot,
+                e.profit_percentage
+             FROM investments i
+             LEFT JOIN investment_estimate e ON e.investment_id = i.id
+             ORDER BY i.id DESC
+             LIMIT :limit OFFSET :offset"
+        );
+        $stmt->bindValue(':limit', $perPage, \PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        return [
+            'data'  => $this->rowsToItems($stmt->fetchAll()),
+            'total' => $total,
+        ];
+    }
+
     private function rowsToItems(array $rows): array
     {
         $result = [];

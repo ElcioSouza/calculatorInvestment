@@ -14,4 +14,9 @@ class ListInvestmentsUseCase
     {
         return $this->service->execute();
     }
+
+    public function paginated(int $page, int $perPage): array
+    {
+        return $this->service->paginated($page, $perPage);
+    }
 }

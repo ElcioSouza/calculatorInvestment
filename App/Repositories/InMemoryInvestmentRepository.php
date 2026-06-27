@@ -63,4 +63,17 @@ class InMemoryInvestmentRepository implements InvestmentRepositoryInterface
         unset($this->storage[$id]);
         return true;
     }
+
+    public function paginated(int $page, int $perPage): array
+    {
+        $all = $this->all();
+        $total = count($all);
+        $offset = ($page - 1) * $perPage;
+        $data = array_slice($all, $offset, $perPage);
+
+        return [
+            'data'  => $data,
+            'total' => $total,
+        ];
+    }
 }

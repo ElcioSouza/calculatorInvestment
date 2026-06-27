@@ -18,4 +18,6 @@ interface InvestmentRepositoryInterface
     public function update(int|string $id, InvestmentInput $input, Investment $result): int;
 
     public function delete(int|string $id): bool;
+
+    public function paginated(int $page, int $perPage): array;
 }

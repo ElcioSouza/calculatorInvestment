@@ -25,4 +25,15 @@ class ListInvestmentService
 
         return $this->jsonRepository->all();
     }
+
+    public function paginated(int $page, int $perPage): array
+    {
+        try {
+            return $this->mysqlRepository->paginated($page, $perPage);
+        } catch (\Throwable $e) {
+            error_log('[ListInvestmentService] MySQL fallback: ' . $e->getMessage());
+        }
+
+        return $this->jsonRepository->paginated($page, $perPage);
+    }
 }

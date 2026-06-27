@@ -42,6 +42,27 @@ class JsonFileInvestmentRepository implements InvestmentRepositoryInterface
         return $result;
     }
 
+    public function paginated(int $page, int $perPage): array
+    {
+        $total = count($this->storage);
+        $offset = ($page - 1) * $perPage;
+        $sliced = array_slice($this->storage, $offset, $perPage, true);
+
+        $data = [];
+        foreach ($sliced as $item) {
+            $data[] = [
+                'id'     => $item['id'],
+                'input'  => $this->arrayToInput($item['input']),
+                'result' => $this->arrayToResult($item['result']),
+            ];
+        }
+
+        return [
+            'data'  => $data,
+            'total' => $total,
+        ];
+    }
+
     public function getLast(): ?array
     {
         $all = $this->all();
