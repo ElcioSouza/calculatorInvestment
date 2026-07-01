@@ -64,6 +64,31 @@ class BusinessDayService extends ServiceBase implements CountsBusinessDaysInterf
         return $days;
     }
 
+    public function countBusinessDaysInMonth(int $year, int $month): int
+    {
+        $start = new DateTimeImmutable(sprintf('%04d-%02d-01', $year, $month));
+        $end   = $start->modify('first day of next month');
+
+        $holidayMap = [];
+        foreach ($this->getHolidaysForYear($year) as $holiday) {
+            $holidayMap[$holiday] = true;
+        }
+
+        $days   = 0;
+        $period = new DatePeriod($start, new DateInterval('P1D'), $end);
+
+        foreach ($period as $date) {
+            $weekday = (int)$date->format('N');
+            $dateKey = $date->format('Y-m-d');
+
+            if ($weekday < 6 && !isset($holidayMap[$dateKey])) {
+                $days++;
+            }
+        }
+
+        return $days;
+    }
+
     private function getHolidaysForYear(int $year): array
     {
         $easter    = $this->calculateEasterDate($year);

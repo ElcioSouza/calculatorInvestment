@@ -34,7 +34,7 @@ class ProfitCalculationService extends ServiceBase implements CalculatesProfitIn
         return bcdiv($profitBruto, (string) $businessDays, 4);
     }
 
-    public function calculateMonthlyProfitLiquid(string $initialCapital, string $amountBruto, int $days, int $businessDays): string
+    public function calculateMonthlyProfitLiquid(string $initialCapital, string $amountBruto, int $days, int $businessDays, int $businessDaysInMonth): string
     {
         $amountLiquid = $this->taxService->calculateIR($initialCapital, $amountBruto, $days);
         $profitLiquid = bcsub($amountLiquid, $initialCapital, self::DEFAULT_SCALE);
@@ -43,10 +43,10 @@ class ProfitCalculationService extends ServiceBase implements CalculatesProfitIn
             return '0.00';
         }
 
-        return number_format(((float) bcmul($profitLiquid, '21', 6)) / $businessDays, 2, '.', '');
+        return number_format(((float) bcmul($profitLiquid, (string) $businessDaysInMonth, 6)) / $businessDays, 2, '.', '');
     }
 
-    public function calculateMonthlyProfitLiquidIsento(string $initialCapital, string $amountBruto, int $businessDays): string
+    public function calculateMonthlyProfitLiquidIsento(string $initialCapital, string $amountBruto, int $businessDays, int $businessDaysInMonth): string
     {
         $profitBruto = bcsub($amountBruto, $initialCapital, self::DEFAULT_SCALE);
 
@@ -54,6 +54,6 @@ class ProfitCalculationService extends ServiceBase implements CalculatesProfitIn
             return '0.00';
         }
 
-        return number_format(((float) bcmul($profitBruto, '21', 6)) / $businessDays, 2, '.', '');
+        return number_format(((float) bcmul($profitBruto, (string) $businessDaysInMonth, 6)) / $businessDays, 2, '.', '');
     }
 }
