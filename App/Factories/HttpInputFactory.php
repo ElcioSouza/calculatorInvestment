@@ -124,7 +124,7 @@ final class HttpInputFactory extends BaseFactory
             'months'           => (string) $input->months,
             'capital'          => $input->initialCapital,
             'cdi'              => $input->cdiPercentage,
-            'selic_meta'       => $input->selicMetaDefault !== '' ? $input->selicMetaDefault : $input->selicMeta,
+            'selic_meta'       => $input->selicMeta !== '' ? $input->selicMeta : ($input->selicMetaDefault !== '' ? $input->selicMetaDefault : ''),
             'selic_meta_default' => $input->selicMetaDefault,
             'pre_rate'         => $input->preFixedAnnualRate,
             'cdi_annual'       => $input->cdiOver,
