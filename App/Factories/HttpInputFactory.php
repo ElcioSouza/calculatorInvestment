@@ -56,10 +56,12 @@ final class HttpInputFactory extends BaseFactory
         }
         
         $cdiOver   = '';
+        $selicMetaChanged = $selicMeta !== '' && $selicMeta !== $selicMetaDefault
+            && $selicMeta !== number_format((float) $selicMetaDefault, 2, '.', '');
         $manualCdiAnnual = $this->getParam($params, 'cdi_annual', '');
-        if ($manualCdiAnnual !== '') {
+        if ($manualCdiAnnual !== '' && !$selicMetaChanged) {
             $cdiOver = $this->normalizePositiveNumberOrFail(trim($manualCdiAnnual), 'CDI anual manual');
-        } elseif (array_key_exists('selic_meta', $params)) {
+        } elseif (array_key_exists('selic_meta', $params) || $selicMetaChanged) {
             $spread = $this->cdiRateService->getSelicMetaToOverSpread();
             $cdiOver = $this->rateCalculationService->convertSelicMetaToOver($selicMeta, false, $spread);
         } else {
