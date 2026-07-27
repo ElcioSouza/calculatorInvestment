@@ -129,7 +129,7 @@ final class HttpInputFactory extends BaseFactory
             'selic_meta'       => $input->selicMeta !== '' ? $input->selicMeta : ($input->selicMetaDefault !== '' ? $input->selicMetaDefault : ''),
             'selic_meta_default' => $input->selicMetaDefault,
             'pre_rate'         => $input->preFixedAnnualRate,
-            'cdi_annual'       => $input->cdiOver,
+            'cdi_annual'       => '',
         ];
     }
 
