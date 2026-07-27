@@ -4,6 +4,7 @@
 
 Aplicação em PHP (CLI + API REST) que calcula o retorno de investimentos em CDB, LCI e LCA, utilizando taxas oficiais do **Banco Central do Brasil** (CDI/Selic) via API SGS (Sistema Gerenciador de Séries Temporais). Realiza cálculos de juros compostos diários em dias úteis, aplica tributação regressiva de IR e IOF conforme a legislação brasileira, e gera relatórios detalhados de simulação.
 
+
 ---
 
 ## Índice
